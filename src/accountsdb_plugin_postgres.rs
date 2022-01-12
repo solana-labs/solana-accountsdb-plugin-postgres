@@ -1,4 +1,3 @@
-use solana_measure::measure::Measure;
 /// Main entry for the PostgreSQL plugin
 use {
     crate::{
@@ -14,6 +13,7 @@ use {
         AccountsDbPlugin, AccountsDbPluginError, ReplicaAccountInfoVersions,
         ReplicaBlockInfoVersions, ReplicaTransactionInfoVersions, Result, SlotStatus,
     },
+    solana_measure::measure::Measure,
     solana_metrics::*,
     std::{fs::File, io::Read},
     thiserror::Error,
