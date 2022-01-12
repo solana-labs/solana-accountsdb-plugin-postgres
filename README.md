@@ -1,4 +1,4 @@
-The [`solana-accountsdb-plugin-postgres`] crate implements a plugin storing
+The `solana-accountsdb-plugin-postgres` crate implements a plugin storing
 account data to a PostgreSQL database to illustrate how a plugin can be
 developed to work with Solana validators using the [Plugin Framework](https://docs.solana.com/developing/plugins/accountsdb_plugin).
 
@@ -144,8 +144,7 @@ full_page_writes = off                 # recover from partial page writes
 max_wal_senders = 0                    # max number of walsender processes
 ```
 
-The sample [postgresql.conf](https://github.com/solana-labs/solana/blob/7ac43b16d2c766df61ae0a06d7aaf14ba61996ac/accountsdb-plugin-postgres/scripts/postgresql.conf)
-can be used for reference.
+The sample scripts/postgresql.conf can be used for reference.
 
 #### Create the Database Instance and the Role
 
@@ -177,19 +176,10 @@ psql -U solana -p 5433 -h 10.138.0.9 -w -d solana
 
 #### Create the Schema Objects
 
-Use the [create_schema.sql](https://github.com/solana-labs/solana/blob/a70eb098f4ae9cd359c1e40bbb7752b3dd61de8d/accountsdb-plugin-postgres/scripts/create_schema.sql)
-to create the objects for storing accounts and slots.
-
-Download the script from github:
+Use the scripts/create_schema.sql
 
 ```
-wget https://raw.githubusercontent.com/solana-labs/solana/a70eb098f4ae9cd359c1e40bbb7752b3dd61de8d/accountsdb-plugin-postgres/scripts/create_schema.sql
-```
-
-Then run the script:
-
-```
-psql -U solana -p 5433 -h 10.138.0.9 -w -d solana -f create_schema.sql
+psql -U solana -p 5433 -h 10.138.0.9 -w -d solana -f scripts/create_schema.sql
 ```
 
 After this, start the validator with the plugin by using the `--accountsdb-plugin-config`
@@ -198,11 +188,10 @@ argument mentioned above.
 #### Destroy the Schema Objects
 
 To destroy the database objects, created by `create_schema.sql`, use
-[drop_schema.sql](https://github.com/solana-labs/solana/blob/a70eb098f4ae9cd359c1e40bbb7752b3dd61de8d/accountsdb-plugin-postgres/scripts/drop_schema.sql).
-For example,
+drop_schema.sql. For example,
 
 ```
-psql -U solana -p 5433 -h 10.138.0.9 -w -d solana -f drop_schema.sql
+psql -U solana -p 5433 -h 10.138.0.9 -w -d solana -f scripts/drop_schema.sql
 ```
 
 ### Capture Historical Account Data
@@ -256,6 +245,7 @@ The following are the tables in the Postgres database
 | Table         | Description             |
 |:--------------|:------------------------|
 | account       | Account data            |
+| block         | Block metadata          |
 | slot          | Slot metadata           |
 | transaction   | Transaction data        |
 | account_audit | Account historical data |
