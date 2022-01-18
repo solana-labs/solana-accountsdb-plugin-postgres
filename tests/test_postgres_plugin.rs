@@ -39,7 +39,7 @@ use {
     },
     solana_streamer::socket::SocketAddrSpace,
     std::{
-        fs::File,
+        fs::{self, File},
         io::Read,
         io::Write,
         path::{Path, PathBuf},
@@ -98,9 +98,9 @@ fn wait_for_next_snapshot(
 }
 
 fn farf_dir() -> PathBuf {
-    std::env::var("FARF_DIR")
-        .unwrap_or_else(|_| "farf".to_string())
-        .into()
+    let dir: String = std::env::var("FARF_DIR").unwrap_or_else(|_| "farf".to_string());
+    fs::create_dir_all(dir.clone()).unwrap();
+    PathBuf::from(dir)
 }
 
 fn generate_account_paths(num_account_paths: usize) -> (Vec<TempDir>, Vec<PathBuf>) {
@@ -177,6 +177,7 @@ fn setup_snapshot_validator_config(
         accounts_db_caching_enabled: true,
         accounts_hash_interval_slots: snapshot_interval_slots,
         accountsdb_plugin_config_files,
+        enforce_ulimit_nofile: false,
         ..ValidatorConfig::default()
     };
 
@@ -191,8 +192,12 @@ fn setup_snapshot_validator_config(
 
 fn test_local_cluster_start_and_exit_with_config(socket_addr_space: SocketAddrSpace) {
     const NUM_NODES: usize = 1;
+    let config = ValidatorConfig {
+        enforce_ulimit_nofile: false,
+        ..ValidatorConfig::default()
+    };
     let mut config = ClusterConfig {
-        validator_configs: make_identical_validator_configs(&ValidatorConfig::default(), NUM_NODES),
+        validator_configs: make_identical_validator_configs(&config, NUM_NODES),
         node_stakes: vec![3; NUM_NODES],
         cluster_lamports: 100,
         ticks_per_slot: 8,
