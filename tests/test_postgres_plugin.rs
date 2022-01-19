@@ -1,5 +1,7 @@
 #![allow(clippy::integer_arithmetic)]
 
+use serde_json::json;
+
 /// Integration testing for the PostgreSQL plugin
 /// This requires a PostgreSQL database named 'solana' be setup at localhost at port 5432
 /// This is automatically setup in the CI environment.
@@ -120,8 +122,7 @@ fn generate_accountsdb_plugin_config() -> (TempDir, PathBuf) {
     path.push("accounts_db_plugin.json");
     let mut config_file = File::create(path.clone()).unwrap();
 
-    let config_content = r#"
-    {
+    let mut config_content = json!({
         "libpath": "libsolana_accountsdb_plugin_postgres.so",
         "connection_str": "host=localhost user=solana password=solana port=5432",
         "threads": 20,
@@ -133,9 +134,13 @@ fn generate_accountsdb_plugin_config() -> (TempDir, PathBuf) {
         "transaction_selector" : {
             "mentions" : ["*"]
         }
+    });
+
+    if std::env::consts::OS == "macos" {
+        config_content["libpath"] = json!("libsolana_accountsdb_plugin_postgres.dylib");
     }
-    "#;
-    write!(config_file, "{}", config_content).unwrap();
+
+    write!(config_file, "{}", config_content.to_string()).unwrap();
     (tmp_dir, path)
 }
 
@@ -215,12 +220,14 @@ fn test_postgres_plugin() {
     solana_logger::setup_with_default(RUST_LOG_FILTER);
 
     unsafe {
-        let lib = Library::new("libsolana_accountsdb_plugin_postgres.so");
+        let filename = match std::env::consts::OS {
+            "macos" => "libsolana_accountsdb_plugin_postgres.dylib",
+            _ => "libsolana_accountsdb_plugin_postgres.so",
+        };
+
+        let lib = Library::new(filename);
         if lib.is_err() {
-            info!(
-                "Failed to load the dynamic library libsolana_accountsdb_plugin_postgres.so {:?}",
-                lib
-            );
+            info!("Failed to load the dynamic library {} {:?}", filename, lib);
             return;
         }
     }
