@@ -43,6 +43,10 @@ pub struct AccountsDbPluginPostgresConfig {
     pub panic_on_db_errors: Option<bool>,
     /// Indicates if to store historical data for accounts
     pub store_account_historical_data: Option<bool>,
+    pub use_ssl: Option<bool>,
+    pub server_ca: Option<String>,
+    pub client_ca: Option<String>,
+    pub client_pem: Option<String>,
 }
 
 #[derive(Error, Debug)]

@@ -14,6 +14,8 @@ use {
     postgres::{Client, NoTls, Statement},
     postgres_client_block_metadata::DbBlockInfo,
     postgres_client_transaction::LogTransactionRequest,
+    openssl::ssl::{SslConnector, SslMethod, SslFiletype},
+    postgres_openssl::MakeTlsConnector,
     solana_accountsdb_plugin_interface::accountsdb_plugin_interface::{
         AccountsDbPluginError, ReplicaAccountInfo, ReplicaBlockInfo, SlotStatus,
     },
@@ -234,7 +236,18 @@ impl SimplePostgresClient {
             )
         };
 
-        match Client::connect(&connection_str, NoTls) {
+        let result = if let Some(true) = config.use_ssl {
+            let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
+            builder.set_ca_file(config.server_ca.as_ref().unwrap()).unwrap();
+            builder.set_certificate_chain_file(config.client_ca.as_ref().unwrap()).unwrap();
+            builder.set_private_key_file(config.client_pem.as_ref().unwrap(), SslFiletype::PEM).unwrap();
+            let connector = MakeTlsConnector::new(builder.build());
+            Client::connect(&connection_str, connector)
+        } else {
+            Client::connect(&connection_str, NoTls)
+        };
+
+        match result {
             Err(err) => {
                 let msg = format!(
                     "Error in connecting to the PostgreSQL database: {:?} connection_str: {:?}",
