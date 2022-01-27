@@ -237,6 +237,27 @@ impl SimplePostgresClient {
         };
 
         let result = if let Some(true) = config.use_ssl {
+            if config.server_ca.is_none() {
+                let msg = 
+                    "\"server_ca\" must be specified when \"use_ssl\" is set".to_string();
+                return Err(AccountsDbPluginError::Custom(Box::new(
+                    AccountsDbPluginPostgresError::ConfigurationError { msg },
+                )));
+            }
+            if config.client_cert.is_none() {
+                let msg = 
+                    "\"client_cert\" must be specified when \"use_ssl\" is set".to_string();
+                return Err(AccountsDbPluginError::Custom(Box::new(
+                    AccountsDbPluginPostgresError::ConfigurationError { msg },
+                )));
+            }
+            if config.client_key.is_none() {
+                let msg = 
+                    "\"client_cclient_keyert\" must be specified when \"use_ssl\" is set".to_string();
+                return Err(AccountsDbPluginError::Custom(Box::new(
+                    AccountsDbPluginPostgresError::ConfigurationError { msg },
+                )));
+            }
             let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
             builder.set_ca_file(config.server_ca.as_ref().unwrap()).unwrap();
             builder.set_certificate_chain_file(config.client_cert.as_ref().unwrap()).unwrap();
