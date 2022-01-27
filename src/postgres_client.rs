@@ -239,8 +239,8 @@ impl SimplePostgresClient {
         let result = if let Some(true) = config.use_ssl {
             let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
             builder.set_ca_file(config.server_ca.as_ref().unwrap()).unwrap();
-            builder.set_certificate_chain_file(config.client_ca.as_ref().unwrap()).unwrap();
-            builder.set_private_key_file(config.client_pem.as_ref().unwrap(), SslFiletype::PEM).unwrap();
+            builder.set_certificate_chain_file(config.client_cert.as_ref().unwrap()).unwrap();
+            builder.set_private_key_file(config.client_key.as_ref().unwrap(), SslFiletype::PEM).unwrap();
             let connector = MakeTlsConnector::new(builder.build());
             Client::connect(&connection_str, connector)
         } else {

@@ -45,8 +45,8 @@ pub struct AccountsDbPluginPostgresConfig {
     pub store_account_historical_data: Option<bool>,
     pub use_ssl: Option<bool>,
     pub server_ca: Option<String>,
-    pub client_ca: Option<String>,
-    pub client_pem: Option<String>,
+    pub client_cert: Option<String>,
+    pub client_key: Option<String>,
 }
 
 #[derive(Error, Debug)]
