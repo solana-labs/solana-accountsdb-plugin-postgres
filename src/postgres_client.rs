@@ -288,7 +288,11 @@ impl SimplePostgresClient {
                 )));
             }
 
-            let connector = MakeTlsConnector::new(builder.build());
+            let mut connector = MakeTlsConnector::new(builder.build());
+            connector.set_callback(|connect_config, _domain| {
+                connect_config.set_verify_hostname(false);
+                Ok(())
+            });
             Client::connect(&connection_str, connector)
         } else {
             Client::connect(&connection_str, NoTls)
