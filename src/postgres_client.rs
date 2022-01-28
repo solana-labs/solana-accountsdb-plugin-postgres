@@ -266,7 +266,7 @@ impl SimplePostgresClient {
                 )));
             }
             if let Err(err) =
-                builder.set_certificate_chain_file(config.client_cert.as_ref().unwrap())
+                builder.set_certificate_file(config.client_cert.as_ref().unwrap(), SslFiletype::PEM)
             {
                 let msg = format!(
                     "Failed to set the client certificate specified by \"client_cert\": {}. Error: ({})",
