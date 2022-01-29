@@ -336,6 +336,8 @@ pub enum DbTransactionErrorCode {
     InvalidAddressLookupTableOwner,
     InvalidAddressLookupTableData,
     InvalidAddressLookupTableIndex,
+    InvalidRentPayingAccount,
+    WouldExceedMaxVoteCostLimit,
 }
 
 impl From<&TransactionError> for DbTransactionErrorCode {
@@ -376,6 +378,8 @@ impl From<&TransactionError> for DbTransactionErrorCode {
             TransactionError::InvalidAddressLookupTableIndex => {
                 Self::InvalidAddressLookupTableIndex
             }
+            TransactionError::InvalidRentPayingAccount => Self::InvalidRentPayingAccount,
+            TransactionError::WouldExceedMaxVoteCostLimit => Self::WouldExceedMaxVoteCostLimit,
         }
     }
 }
