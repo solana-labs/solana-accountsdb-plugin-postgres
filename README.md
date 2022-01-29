@@ -38,6 +38,20 @@ startup, the plugin uses bulk inserts. The batch size is controlled by the
 The `panic_on_db_errors` can be used to panic the validator in case of database
 errors to ensure data consistency.
 
+### Support Connection Using SSL
+
+To connect to the PostgreSQL database via SSL, set `use_ssl` to true, and specify
+the server certificate, the client certificate and the client key files in PEM format
+using the ``server_cat`, `client_cert` and `client_key` fields respectively.
+For example:
+
+```
+    "use_ssl": true,
+    "server_ca": "/solana/.ssh/server-ca.pem",
+    "client_cert": "/solana/.ssh/client-cert.pem",
+    "client_key": "/solana/.ssh/client-key.pem",
+```
+
 ### Account Selection
 
 The `accounts_selector` can be used to filter the accounts that should be persisted.
