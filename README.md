@@ -42,7 +42,7 @@ errors to ensure data consistency.
 
 To connect to the PostgreSQL database via SSL, set `use_ssl` to true, and specify
 the server certificate, the client certificate and the client key files in PEM format
-using the ``server_cat`, `client_cert` and `client_key` fields respectively.
+using the `server_ca`, `client_cert` and `client_key` fields respectively.
 For example:
 
 ```
