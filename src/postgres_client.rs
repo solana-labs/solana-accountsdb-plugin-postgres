@@ -11,9 +11,11 @@ use {
     chrono::Utc,
     crossbeam_channel::{bounded, Receiver, RecvTimeoutError, Sender},
     log::*,
+    openssl::ssl::{SslConnector, SslFiletype, SslMethod},
     postgres::{Client, NoTls, Statement},
     postgres_client_block_metadata::DbBlockInfo,
     postgres_client_transaction::LogTransactionRequest,
+    postgres_openssl::MakeTlsConnector,
     solana_accountsdb_plugin_interface::accountsdb_plugin_interface::{
         AccountsDbPluginError, ReplicaAccountInfo, ReplicaBlockInfo, SlotStatus,
     },
@@ -234,7 +236,68 @@ impl SimplePostgresClient {
             )
         };
 
-        match Client::connect(&connection_str, NoTls) {
+        let result = if let Some(true) = config.use_ssl {
+            if config.server_ca.is_none() {
+                let msg = "\"server_ca\" must be specified when \"use_ssl\" is set".to_string();
+                return Err(AccountsDbPluginError::Custom(Box::new(
+                    AccountsDbPluginPostgresError::ConfigurationError { msg },
+                )));
+            }
+            if config.client_cert.is_none() {
+                let msg = "\"client_cert\" must be specified when \"use_ssl\" is set".to_string();
+                return Err(AccountsDbPluginError::Custom(Box::new(
+                    AccountsDbPluginPostgresError::ConfigurationError { msg },
+                )));
+            }
+            if config.client_key.is_none() {
+                let msg = "\"client_key\" must be specified when \"use_ssl\" is set".to_string();
+                return Err(AccountsDbPluginError::Custom(Box::new(
+                    AccountsDbPluginPostgresError::ConfigurationError { msg },
+                )));
+            }
+            let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
+            if let Err(err) = builder.set_ca_file(config.server_ca.as_ref().unwrap()) {
+                let msg = format!(
+                    "Failed to set the server certificate specified by \"server_ca\": {}. Error: ({})",
+                    config.server_ca.as_ref().unwrap(), err);
+                return Err(AccountsDbPluginError::Custom(Box::new(
+                    AccountsDbPluginPostgresError::ConfigurationError { msg },
+                )));
+            }
+            if let Err(err) =
+                builder.set_certificate_file(config.client_cert.as_ref().unwrap(), SslFiletype::PEM)
+            {
+                let msg = format!(
+                    "Failed to set the client certificate specified by \"client_cert\": {}. Error: ({})",
+                    config.client_cert.as_ref().unwrap(), err);
+                return Err(AccountsDbPluginError::Custom(Box::new(
+                    AccountsDbPluginPostgresError::ConfigurationError { msg },
+                )));
+            }
+            if let Err(err) =
+                builder.set_private_key_file(config.client_key.as_ref().unwrap(), SslFiletype::PEM)
+            {
+                let msg = format!(
+                    "Failed to set the client key specified by \"client_key\": {}. Error: ({})",
+                    config.client_key.as_ref().unwrap(),
+                    err
+                );
+                return Err(AccountsDbPluginError::Custom(Box::new(
+                    AccountsDbPluginPostgresError::ConfigurationError { msg },
+                )));
+            }
+
+            let mut connector = MakeTlsConnector::new(builder.build());
+            connector.set_callback(|connect_config, _domain| {
+                connect_config.set_verify_hostname(false);
+                Ok(())
+            });
+            Client::connect(&connection_str, connector)
+        } else {
+            Client::connect(&connection_str, NoTls)
+        };
+
+        match result {
             Err(err) => {
                 let msg = format!(
                     "Error in connecting to the PostgreSQL database: {:?} connection_str: {:?}",
