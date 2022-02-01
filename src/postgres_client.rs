@@ -250,8 +250,7 @@ impl SimplePostgresClient {
                 )));
             }
             if config.client_key.is_none() {
-                let msg = "\"client_key\" must be specified when \"use_ssl\" is set"
-                    .to_string();
+                let msg = "\"client_key\" must be specified when \"use_ssl\" is set".to_string();
                 return Err(AccountsDbPluginError::Custom(Box::new(
                     AccountsDbPluginPostgresError::ConfigurationError { msg },
                 )));
