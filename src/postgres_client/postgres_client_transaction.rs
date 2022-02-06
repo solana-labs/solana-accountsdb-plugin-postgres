@@ -10,7 +10,7 @@ use {
     chrono::Utc,
     log::*,
     postgres::{Client, Statement},
-    postgres_types::ToSql,
+    postgres_types::{FromSql, ToSql},
     solana_accountsdb_plugin_interface::accountsdb_plugin_interface::{
         AccountsDbPluginError, ReplicaTransactionInfo,
     },
@@ -30,7 +30,7 @@ use {
 
 const MAX_TRANSACTION_STATUS_LEN: usize = 256;
 
-#[derive(Clone, Debug, ToSql)]
+#[derive(Clone, Debug, FromSql, ToSql)]
 #[postgres(name = "CompiledInstruction")]
 pub struct DbCompiledInstruction {
     pub program_id_index: i16,
@@ -38,14 +38,14 @@ pub struct DbCompiledInstruction {
     pub data: Vec<u8>,
 }
 
-#[derive(Clone, Debug, ToSql)]
+#[derive(Clone, Debug, FromSql, ToSql)]
 #[postgres(name = "InnerInstructions")]
 pub struct DbInnerInstructions {
     pub index: i16,
     pub instructions: Vec<DbCompiledInstruction>,
 }
 
-#[derive(Clone, Debug, ToSql)]
+#[derive(Clone, Debug, FromSql, ToSql)]
 #[postgres(name = "TransactionTokenBalance")]
 pub struct DbTransactionTokenBalance {
     pub account_index: i16,
@@ -54,7 +54,7 @@ pub struct DbTransactionTokenBalance {
     pub owner: String,
 }
 
-#[derive(Clone, Debug, ToSql, PartialEq)]
+#[derive(Clone, Debug, FromSql, ToSql, PartialEq)]
 #[postgres(name = "RewardType")]
 pub enum DbRewardType {
     Fee,
@@ -63,7 +63,7 @@ pub enum DbRewardType {
     Voting,
 }
 
-#[derive(Clone, Debug, ToSql)]
+#[derive(Clone, Debug, FromSql, ToSql)]
 #[postgres(name = "Reward")]
 pub struct DbReward {
     pub pubkey: String,
@@ -73,7 +73,7 @@ pub struct DbReward {
     pub commission: Option<i16>,
 }
 
-#[derive(Clone, Debug, ToSql)]
+#[derive(Clone, Debug, FromSql, ToSql)]
 #[postgres(name = "TransactionStatusMeta")]
 pub struct DbTransactionStatusMeta {
     pub error: Option<DbTransactionError>,
@@ -87,7 +87,7 @@ pub struct DbTransactionStatusMeta {
     pub rewards: Option<Vec<DbReward>>,
 }
 
-#[derive(Clone, Debug, ToSql)]
+#[derive(Clone, Debug, FromSql, ToSql)]
 #[postgres(name = "TransactionMessageHeader")]
 pub struct DbTransactionMessageHeader {
     pub num_required_signatures: i16,
@@ -95,7 +95,7 @@ pub struct DbTransactionMessageHeader {
     pub num_readonly_unsigned_accounts: i16,
 }
 
-#[derive(Clone, Debug, ToSql)]
+#[derive(Clone, Debug, FromSql, ToSql)]
 #[postgres(name = "TransactionMessage")]
 pub struct DbTransactionMessage {
     pub header: DbTransactionMessageHeader,
@@ -104,7 +104,7 @@ pub struct DbTransactionMessage {
     pub instructions: Vec<DbCompiledInstruction>,
 }
 
-#[derive(Clone, Debug, ToSql)]
+#[derive(Clone, Debug, FromSql, ToSql)]
 #[postgres(name = "TransactionMessageAddressTableLookup")]
 pub struct DbTransactionMessageAddressTableLookup {
     pub account_key: Vec<u8>,
@@ -112,7 +112,7 @@ pub struct DbTransactionMessageAddressTableLookup {
     pub readonly_indexes: Vec<i16>,
 }
 
-#[derive(Clone, Debug, ToSql)]
+#[derive(Clone, Debug, FromSql, ToSql)]
 #[postgres(name = "TransactionMessageV0")]
 pub struct DbTransactionMessageV0 {
     pub header: DbTransactionMessageHeader,
@@ -122,14 +122,14 @@ pub struct DbTransactionMessageV0 {
     pub address_table_lookups: Vec<DbTransactionMessageAddressTableLookup>,
 }
 
-#[derive(Clone, Debug, ToSql)]
+#[derive(Clone, Debug, FromSql, ToSql)]
 #[postgres(name = "LoadedAddresses")]
 pub struct DbLoadedAddresses {
     pub writable: Vec<Vec<u8>>,
     pub readonly: Vec<Vec<u8>>,
 }
 
-#[derive(Clone, Debug, ToSql)]
+#[derive(Clone, Debug, FromSql, ToSql)]
 #[postgres(name = "LoadedMessageV0")]
 pub struct DbLoadedMessageV0 {
     pub message: DbTransactionMessageV0,
@@ -306,7 +306,7 @@ impl From<&Reward> for DbReward {
     }
 }
 
-#[derive(Clone, Debug, ToSql, PartialEq)]
+#[derive(Clone, Debug, FromSql, ToSql, PartialEq)]
 #[postgres(name = "TransactionErrorCode")]
 pub enum DbTransactionErrorCode {
     AccountInUse,
@@ -384,7 +384,7 @@ impl From<&TransactionError> for DbTransactionErrorCode {
     }
 }
 
-#[derive(Clone, Debug, ToSql, PartialEq)]
+#[derive(Clone, Debug, FromSql, ToSql, PartialEq)]
 #[postgres(name = "TransactionError")]
 pub struct DbTransactionError {
     error_code: DbTransactionErrorCode,
