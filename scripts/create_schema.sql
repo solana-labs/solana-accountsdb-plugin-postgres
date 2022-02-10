@@ -16,6 +16,10 @@ CREATE TABLE account (
     updated_on TIMESTAMP NOT NULL
 );
 
+CREATE INDEX account_owner ON account (owner);
+
+CREATE INDEX account_slot ON account (slot);
+
 -- The table storing slot information
 CREATE TABLE slot (
     slot BIGINT PRIMARY KEY,
