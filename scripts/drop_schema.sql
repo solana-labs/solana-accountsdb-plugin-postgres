@@ -9,6 +9,8 @@ DROP TABLE account;
 DROP TABLE slot;
 DROP TABLE transaction;
 DROP TABLE block;
+DROP TABLE spl_token_owner_index;
+DROP TABLE spl_token_mint_index;
 
 DROP TYPE "TransactionError" CASCADE;
 DROP TYPE "TransactionErrorCode" CASCADE;
