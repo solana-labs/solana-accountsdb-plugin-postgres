@@ -5,8 +5,12 @@ mod postgres_client_transaction;
 
 /// A concurrent implementation for writing accounts into the PostgreSQL in parallel.
 use {
-    crate::accountsdb_plugin_postgres::{
-        AccountsDbPluginPostgresConfig, AccountsDbPluginPostgresError,
+    crate::{
+        accountsdb_plugin_postgres::{
+            AccountsDbPluginPostgresConfig, AccountsDbPluginPostgresError,
+        },
+        inline_spl_token::{self, GenericTokenAccount},
+        inline_spl_token_2022,
     },
     chrono::Utc,
     crossbeam_channel::{bounded, Receiver, RecvTimeoutError, Sender},
@@ -21,7 +25,7 @@ use {
     },
     solana_measure::measure::Measure,
     solana_metrics::*,
-    solana_sdk::timing::AtomicInterval,
+    solana_sdk::{pubkey::Pubkey, timing::AtomicInterval},
     std::{
         sync::{
             atomic::{AtomicBool, AtomicUsize, Ordering},
@@ -52,6 +56,8 @@ struct PostgresSqlClientWrapper {
     update_transaction_log_stmt: Statement,
     update_block_metadata_stmt: Statement,
     insert_account_audit_stmt: Option<Statement>,
+    insert_token_owner_idx_stmt: Option<Statement>,
+    insert_token_mint_idx_stmt: Option<Statement>,
 }
 
 pub struct SimplePostgresClient {
@@ -389,6 +395,46 @@ impl SimplePostgresClient {
         }
     }
 
+    fn prepare_query_statement(
+        client: &mut Client,
+        config: &AccountsDbPluginPostgresConfig,
+        stmt: &str,
+    ) -> Result<Statement, AccountsDbPluginError> {
+        let statement = client.prepare(stmt);
+
+        match statement {
+            Err(err) => {
+                return Err(AccountsDbPluginError::Custom(Box::new(AccountsDbPluginPostgresError::DataSchemaError {
+                    msg: format!(
+                        "Error in preparing for the statement {} for PostgreSQL database: {} host: {:?} user: {:?} config: {:?}",
+                        stmt, err, config.host, config.user, config
+                    ),
+                })));
+            }
+            Ok(statement) => Ok(statement),
+        }
+    }
+
+    fn build_single_token_owner_index_upsert_statement(
+        client: &mut Client,
+        config: &AccountsDbPluginPostgresConfig,
+    ) -> Result<Statement, AccountsDbPluginError> {
+        let stmt = "INSERT INTO spl_token_owner_index AS owner_idx (owner_key, inner_key) \
+        VALUES ($1, $2) ON CONFLICT DO NOTHING";
+
+        Self::prepare_query_statement(client, config, stmt)
+    }
+
+    fn build_single_token_mint_index_upsert_statement(
+        client: &mut Client,
+        config: &AccountsDbPluginPostgresConfig,
+    ) -> Result<Statement, AccountsDbPluginError> {
+        let stmt = "INSERT INTO spl_token_mint_index AS mint_idx (mint_key, inner_key) \
+        VALUES ($1, $2) ON CONFLICT DO NOTHING";
+
+        Self::prepare_query_statement(client, config, stmt)
+    }
+
     fn build_account_audit_insert_statement(
         client: &mut Client,
         config: &AccountsDbPluginPostgresConfig,
@@ -534,13 +580,115 @@ impl SimplePostgresClient {
         Ok(())
     }
 
+    fn update_token_owner_idx_gen<G: GenericTokenAccount>(
+        client: &mut Client,
+        statement: &Statement,
+        token_id: &Pubkey,
+        account: &DbAccountInfo,
+    ) -> Result<(), AccountsDbPluginError> {
+        if account.owner() == token_id.to_bytes() {
+            if let Some(owner_key) = G::unpack_account_owner(account.data()) {
+                let owner_key = owner_key.to_bytes().to_vec();
+                let pubkey = account.pubkey();
+                let result = client.execute(statement, &[&owner_key, &pubkey]);
+                if let Err(err) = result {
+                    let msg = format!(
+                        "Failed to update the token owner index to the PostgreSQL database. Error: {:?}",
+                        err
+                    );
+                    error!("{}", msg);
+                    return Err(AccountsDbPluginError::AccountsUpdateError { msg });
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn update_token_mint_idx_gen<G: GenericTokenAccount>(
+        client: &mut Client,
+        statement: &Statement,
+        token_id: &Pubkey,
+        account: &DbAccountInfo,
+    ) -> Result<(), AccountsDbPluginError> {
+        if account.owner() == token_id.to_bytes() {
+            if let Some(mint_key) = G::unpack_account_mint(account.data()) {
+                let mint_key = mint_key.to_bytes().to_vec();
+                let pubkey = account.pubkey();
+                let result = client.execute(statement, &[&mint_key, &pubkey]);
+                if let Err(err) = result {
+                    let msg = format!(
+                        "Failed to update the token mint index to the PostgreSQL database. Error: {:?}",
+                        err
+                    );
+                    error!("{}", msg);
+                    return Err(AccountsDbPluginError::AccountsUpdateError { msg });
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn update_token_owner_idx(
+        client: &mut Client,
+        statement: &Statement,
+        account: &DbAccountInfo,
+    ) -> Result<(), AccountsDbPluginError> {
+        Self::update_token_owner_idx_gen::<inline_spl_token::Account>(
+            client,
+            statement,
+            &inline_spl_token::id(),
+            account,
+        )?;
+
+        Self::update_token_owner_idx_gen::<inline_spl_token_2022::Account>(
+            client,
+            statement,
+            &inline_spl_token_2022::id(),
+            account,
+        )
+    }
+
+    fn update_token_mint_idx(
+        client: &mut Client,
+        statement: &Statement,
+        account: &DbAccountInfo,
+    ) -> Result<(), AccountsDbPluginError> {
+        Self::update_token_mint_idx_gen::<inline_spl_token::Account>(
+            client,
+            statement,
+            &inline_spl_token::id(),
+            account,
+        )?;
+
+        Self::update_token_mint_idx_gen::<inline_spl_token_2022::Account>(
+            client,
+            statement,
+            &inline_spl_token_2022::id(),
+            account,
+        )
+    }
+
     /// Update or insert a single account
     fn upsert_account(&mut self, account: &DbAccountInfo) -> Result<(), AccountsDbPluginError> {
         let client = self.client.get_mut().unwrap();
         let insert_account_audit_stmt = &client.insert_account_audit_stmt;
         let statement = &client.update_account_stmt;
+        let insert_token_owner_idx_stmt = &client.insert_token_owner_idx_stmt;
+        let insert_token_mint_idx_stmt = &client.insert_token_mint_idx_stmt;
         let client = &mut client.client;
-        Self::upsert_account_internal(account, statement, client, insert_account_audit_stmt)
+        Self::upsert_account_internal(account, statement, client, insert_account_audit_stmt)?;
+
+        if let Some(insert_token_owner_idx_stmt) = insert_token_owner_idx_stmt {
+            Self::update_token_owner_idx(client, insert_token_owner_idx_stmt, account)?;
+        }
+
+        if let Some(insert_token_mint_idx_stmt) = insert_token_mint_idx_stmt {
+            Self::update_token_mint_idx(client, insert_token_mint_idx_stmt, account)?;
+        }
+
+        Ok(())
     }
 
     /// Insert accounts in batch to reduce network overhead
@@ -658,6 +806,24 @@ impl SimplePostgresClient {
             None
         };
 
+        let insert_token_owner_idx_stmt = if let Some(true) = config.index_token_owner {
+            Some(Self::build_single_token_owner_index_upsert_statement(
+                &mut client,
+                config,
+            )?)
+        } else {
+            None
+        };
+
+        let insert_token_mint_idx_stmt = if let Some(true) = config.index_token_mint {
+            Some(Self::build_single_token_mint_index_upsert_statement(
+                &mut client,
+                config,
+            )?)
+        } else {
+            None
+        };
+
         info!("Created SimplePostgresClient.");
         Ok(Self {
             batch_size,
@@ -671,6 +837,8 @@ impl SimplePostgresClient {
                 update_transaction_log_stmt,
                 update_block_metadata_stmt,
                 insert_account_audit_stmt,
+                insert_token_owner_idx_stmt,
+                insert_token_mint_idx_stmt,
             }),
         })
     }

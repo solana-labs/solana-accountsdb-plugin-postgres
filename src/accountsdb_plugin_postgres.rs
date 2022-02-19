@@ -32,21 +32,55 @@ impl std::fmt::Debug for AccountsDbPluginPostgres {
     }
 }
 
+/// The Configurqation for the PostgreSQL plugin
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AccountsDbPluginPostgresConfig {
+    /// The host name or IP of the PostgreSQL server
     pub host: Option<String>,
+
+    /// The user name of the PostgreSQL server.
     pub user: Option<String>,
+
+    /// The port number of the PostgreSQL database, the default is 5432
     pub port: Option<u16>,
+
+    /// The connection string of PostgreSQL database, if this is set
+    /// `host`, `user` and `port` will be ignored.
     pub connection_str: Option<String>,
+
+    /// Controls the number of threads establishing connections to
+    /// the PostgreSQL server. The default is 10.
     pub threads: Option<usize>,
+
+    /// Controls the batch size when bulk loading accounts.
+    /// The default is 10.
     pub batch_size: Option<usize>,
+
+    /// Controls if to panic the validator in case of errors
+    /// writing to PostgreSQL server. The default is false
     pub panic_on_db_errors: Option<bool>,
+
     /// Indicates if to store historical data for accounts
     pub store_account_historical_data: Option<bool>,
+
+    /// Controls if to use SSL based connection to the database server.
+    /// The default is false
     pub use_ssl: Option<bool>,
+
+    /// Specify the path to PostgreSQL server's certificate file
     pub server_ca: Option<String>,
+
+    /// Specify the path to the local client's certificate file
     pub client_cert: Option<String>,
+
+    /// Specify the path to the local client's private PEM key file.
     pub client_key: Option<String>,
+
+    /// Controls if to index the token owners. The default is false
+    pub index_token_owner: Option<bool>,
+
+    /// Controls if to index the token mints. The default is false
+    pub index_token_mint: Option<bool>,
 }
 
 #[derive(Error, Debug)]
