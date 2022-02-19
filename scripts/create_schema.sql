@@ -190,7 +190,7 @@ CREATE TABLE spl_token_mint_index (
 );
 
 CREATE INDEX spl_token_mint_index_mint_key ON spl_token_mint_index (mint_key);
-CREATE UNIQUE INDEX spl_token_mint_index_mint_pair ON spl_token_owner_index (mint_key, inner_key);
+CREATE UNIQUE INDEX spl_token_mint_index_mint_pair ON spl_token_mint_index (mint_key, inner_key);
 
 /**
  * The following is for keeping historical data for accounts and is not required for plugin to work.
