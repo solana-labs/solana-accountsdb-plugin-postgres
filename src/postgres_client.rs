@@ -341,7 +341,7 @@ impl SimplePostgresClient {
         let mut stmt =
             String::from("INSERT INTO spl_token_owner_index AS idx (owner_key, inner_key) VALUES");
         for j in 0..batch_size {
-            let row = j * ACCOUNT_COLUMN_COUNT;
+            let row = j * TOKEN_IDX_COLUMN_COUNT;
             let val_str = format!("(${}, ${})", row + 1, row + 2,);
 
             if j == 0 {
@@ -381,7 +381,7 @@ impl SimplePostgresClient {
         let mut stmt =
             String::from("INSERT INTO spl_token_mint_index AS idx (mint_key, inner_key) VALUES");
         for j in 0..batch_size {
-            let row = j * ACCOUNT_COLUMN_COUNT;
+            let row = j * TOKEN_IDX_COLUMN_COUNT;
             let val_str = format!("(${}, ${})", row + 1, row + 2,);
 
             if j == 0 {
@@ -818,7 +818,7 @@ impl SimplePostgresClient {
         }
     }
 
-    /// Bulk insert secondary indexes
+    /// Queue bulk insert secondary indexes
     fn queue_secondary_indexes(&mut self, account: &DbAccountInfo) {
         if self.index_token_owner {
             self.queue_token_owner_idx_gen::<inline_spl_token::Account>(
@@ -979,7 +979,7 @@ impl SimplePostgresClient {
             let mut values: Vec<&(dyn types::ToSql + Sync)> =
                 Vec::with_capacity(self.batch_size * TOKEN_IDX_COLUMN_COUNT);
             for j in 0..self.batch_size {
-                let index = &self.pending_token_owner_idx[j];
+                let index = &self.pending_token_mint_idx[j];
                 values.push(&index.owner);
                 values.push(&index.inner_key);
             }
@@ -998,7 +998,7 @@ impl SimplePostgresClient {
                 &values,
             );
 
-            self.pending_token_owner_idx.clear();
+            self.pending_token_mint_idx.clear();
 
             if let Err(err) = result {
                 let msg = format!(
