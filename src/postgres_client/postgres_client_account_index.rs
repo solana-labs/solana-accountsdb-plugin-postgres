@@ -19,7 +19,7 @@ use {
     tokio_postgres::types,
 };
 
-const TOKEN_IDX_COLUMN_COUNT: usize = 2;
+const TOKEN_INDEX_COLUMN_COUNT: usize = 2;
 /// Model the secondary index for token owner and mint
 pub struct TokenSecondaryIndex {
     owner: Vec<u8>,
@@ -27,6 +27,7 @@ pub struct TokenSecondaryIndex {
 }
 
 impl SimplePostgresClient {
+    /// Build the token owner index bulk insert statement
     pub fn build_bulk_token_owner_index_insert_statement(
         client: &mut Client,
         config: &AccountsDbPluginPostgresConfig,
@@ -34,10 +35,11 @@ impl SimplePostgresClient {
         let batch_size = config
             .batch_size
             .unwrap_or(DEFAULT_ACCOUNTS_INSERT_BATCH_SIZE);
-        let mut stmt =
-            String::from("INSERT INTO spl_token_owner_index AS idx (owner_key, inner_key) VALUES");
+        let mut stmt = String::from(
+            "INSERT INTO spl_token_owner_index AS index (owner_key, inner_key) VALUES",
+        );
         for j in 0..batch_size {
-            let row = j * TOKEN_IDX_COLUMN_COUNT;
+            let row = j * TOKEN_INDEX_COLUMN_COUNT;
             let val_str = format!("(${}, ${})", row + 1, row + 2,);
 
             if j == 0 {
@@ -67,6 +69,7 @@ impl SimplePostgresClient {
         }
     }
 
+    /// Build the token mint index bulk insert statement.
     pub fn build_bulk_token_mint_index_insert_statement(
         client: &mut Client,
         config: &AccountsDbPluginPostgresConfig,
@@ -75,9 +78,9 @@ impl SimplePostgresClient {
             .batch_size
             .unwrap_or(DEFAULT_ACCOUNTS_INSERT_BATCH_SIZE);
         let mut stmt =
-            String::from("INSERT INTO spl_token_mint_index AS idx (mint_key, inner_key) VALUES");
+            String::from("INSERT INTO spl_token_mint_index AS index (mint_key, inner_key) VALUES");
         for j in 0..batch_size {
-            let row = j * TOKEN_IDX_COLUMN_COUNT;
+            let row = j * TOKEN_INDEX_COLUMN_COUNT;
             let val_str = format!("(${}, ${})", row + 1, row + 2,);
 
             if j == 0 {
@@ -107,33 +110,36 @@ impl SimplePostgresClient {
         }
     }
 
-    pub fn bulk_insert_token_owner_idx(&mut self) -> Result<(), AccountsDbPluginError> {
-        if self.pending_token_owner_idx.len() == self.batch_size {
-            let mut measure = Measure::start("accountsdb-plugin-postgres-prepare-owner-idx-values");
+    /// Execute the token owner bulk insert query.
+    pub fn bulk_insert_token_owner_index(&mut self) -> Result<(), AccountsDbPluginError> {
+        if self.pending_token_owner_index.len() == self.batch_size {
+            let mut measure =
+                Measure::start("accountsdb-plugin-postgres-prepare-owner-index-values");
 
             let mut values: Vec<&(dyn types::ToSql + Sync)> =
-                Vec::with_capacity(self.batch_size * TOKEN_IDX_COLUMN_COUNT);
+                Vec::with_capacity(self.batch_size * TOKEN_INDEX_COLUMN_COUNT);
             for j in 0..self.batch_size {
-                let index = &self.pending_token_owner_idx[j];
+                let index = &self.pending_token_owner_index[j];
                 values.push(&index.owner);
                 values.push(&index.inner_key);
             }
             measure.stop();
             inc_new_counter_debug!(
-                "accountsdb-plugin-postgres-prepare-owner-idx-values-us",
+                "accountsdb-plugin-postgres-prepare-owner-index-values-us",
                 measure.as_us() as usize,
                 10000,
                 10000
             );
 
-            let mut measure = Measure::start("accountsdb-plugin-postgres-update-owner-idx-account");
+            let mut measure =
+                Measure::start("accountsdb-plugin-postgres-update-owner-index-account");
             let client = self.client.get_mut().unwrap();
             let result = client.client.query(
-                client.bulk_insert_token_owner_idx_stmt.as_ref().unwrap(),
+                client.bulk_insert_token_owner_index_stmt.as_ref().unwrap(),
                 &values,
             );
 
-            self.pending_token_owner_idx.clear();
+            self.pending_token_owner_index.clear();
 
             if let Err(err) = result {
                 let msg = format!(
@@ -146,13 +152,13 @@ impl SimplePostgresClient {
 
             measure.stop();
             inc_new_counter_debug!(
-                "accountsdb-plugin-postgres-update-owner-idx-us",
+                "accountsdb-plugin-postgres-update-owner-index-us",
                 measure.as_us() as usize,
                 10000,
                 10000
             );
             inc_new_counter_debug!(
-                "accountsdb-plugin-postgres-update-owner-idx-count",
+                "accountsdb-plugin-postgres-update-owner-index-count",
                 self.batch_size,
                 10000,
                 10000
@@ -161,33 +167,36 @@ impl SimplePostgresClient {
         Ok(())
     }
 
-    pub fn bulk_insert_token_mint_idx(&mut self) -> Result<(), AccountsDbPluginError> {
-        if self.pending_token_owner_idx.len() == self.batch_size {
-            let mut measure = Measure::start("accountsdb-plugin-postgres-prepare-mint-idx-values");
+    /// Execute the token mint index bulk insert query.
+    pub fn bulk_insert_token_mint_index(&mut self) -> Result<(), AccountsDbPluginError> {
+        if self.pending_token_mint_index.len() == self.batch_size {
+            let mut measure =
+                Measure::start("accountsdb-plugin-postgres-prepare-mint-index-values");
 
             let mut values: Vec<&(dyn types::ToSql + Sync)> =
-                Vec::with_capacity(self.batch_size * TOKEN_IDX_COLUMN_COUNT);
+                Vec::with_capacity(self.batch_size * TOKEN_INDEX_COLUMN_COUNT);
             for j in 0..self.batch_size {
-                let index = &self.pending_token_mint_idx[j];
+                let index = &self.pending_token_mint_index[j];
                 values.push(&index.owner);
                 values.push(&index.inner_key);
             }
             measure.stop();
             inc_new_counter_debug!(
-                "accountsdb-plugin-postgres-prepare-mint-idx-values-us",
+                "accountsdb-plugin-postgres-prepare-mint-index-values-us",
                 measure.as_us() as usize,
                 10000,
                 10000
             );
 
-            let mut measure = Measure::start("accountsdb-plugin-postgres-update-mint-idx-account");
+            let mut measure =
+                Measure::start("accountsdb-plugin-postgres-update-mint-index-account");
             let client = self.client.get_mut().unwrap();
             let result = client.client.query(
-                client.bulk_insert_token_mint_idx_stmt.as_ref().unwrap(),
+                client.bulk_insert_token_mint_index_stmt.as_ref().unwrap(),
                 &values,
             );
 
-            self.pending_token_mint_idx.clear();
+            self.pending_token_mint_index.clear();
 
             if let Err(err) = result {
                 let msg = format!(
@@ -200,13 +209,13 @@ impl SimplePostgresClient {
 
             measure.stop();
             inc_new_counter_debug!(
-                "accountsdb-plugin-postgres-update-mint-idx-us",
+                "accountsdb-plugin-postgres-update-mint-index-us",
                 measure.as_us() as usize,
                 10000,
                 10000
             );
             inc_new_counter_debug!(
-                "accountsdb-plugin-postgres-update-mint-idx-count",
+                "accountsdb-plugin-postgres-update-mint-index-count",
                 self.batch_size,
                 10000,
                 10000
@@ -215,7 +224,8 @@ impl SimplePostgresClient {
         Ok(())
     }
 
-    fn queue_token_owner_idx_gen<G: GenericTokenAccount>(
+    /// Generic function to queue the token owner index for bulk insert.
+    fn queue_token_owner_index_gen<G: GenericTokenAccount>(
         &mut self,
         token_id: &Pubkey,
         account: &DbAccountInfo,
@@ -224,7 +234,7 @@ impl SimplePostgresClient {
             if let Some(owner_key) = G::unpack_account_owner(account.data()) {
                 let owner_key = owner_key.to_bytes().to_vec();
                 let pubkey = account.pubkey();
-                self.pending_token_owner_idx.push(TokenSecondaryIndex {
+                self.pending_token_owner_index.push(TokenSecondaryIndex {
                     owner: owner_key,
                     inner_key: pubkey.to_vec(),
                 });
@@ -232,7 +242,8 @@ impl SimplePostgresClient {
         }
     }
 
-    fn queue_token_mint_idx_gen<G: GenericTokenAccount>(
+    /// Generic function to queue the token mint index for bulk insert.
+    fn queue_token_mint_index_gen<G: GenericTokenAccount>(
         &mut self,
         token_id: &Pubkey,
         account: &DbAccountInfo,
@@ -241,7 +252,7 @@ impl SimplePostgresClient {
             if let Some(mint_key) = G::unpack_account_mint(account.data()) {
                 let mint_key = mint_key.to_bytes().to_vec();
                 let pubkey = account.pubkey();
-                self.pending_token_mint_idx.push(TokenSecondaryIndex {
+                self.pending_token_mint_index.push(TokenSecondaryIndex {
                     owner: mint_key,
                     inner_key: pubkey.to_vec(),
                 })
@@ -249,32 +260,33 @@ impl SimplePostgresClient {
         }
     }
 
-    /// Queue bulk insert secondary indexes
+    /// Queue bulk insert secondary indexes: token owner and token mint indexes.
     pub fn queue_secondary_indexes(&mut self, account: &DbAccountInfo) {
         if self.index_token_owner {
-            self.queue_token_owner_idx_gen::<inline_spl_token::Account>(
+            self.queue_token_owner_index_gen::<inline_spl_token::Account>(
                 &inline_spl_token::id(),
                 account,
             );
-            self.queue_token_owner_idx_gen::<inline_spl_token_2022::Account>(
+            self.queue_token_owner_index_gen::<inline_spl_token_2022::Account>(
                 &inline_spl_token_2022::id(),
                 account,
             );
         }
 
         if self.index_token_mint {
-            self.queue_token_mint_idx_gen::<inline_spl_token::Account>(
+            self.queue_token_mint_index_gen::<inline_spl_token::Account>(
                 &inline_spl_token::id(),
                 account,
             );
-            self.queue_token_mint_idx_gen::<inline_spl_token_2022::Account>(
+            self.queue_token_mint_index_gen::<inline_spl_token_2022::Account>(
                 &inline_spl_token_2022::id(),
                 account,
             );
         }
     }
 
-    fn update_token_owner_idx_gen<G: GenericTokenAccount>(
+    /// Generic function to update a single token owner index.
+    fn update_token_owner_index_gen<G: GenericTokenAccount>(
         client: &mut Client,
         statement: &Statement,
         token_id: &Pubkey,
@@ -299,7 +311,8 @@ impl SimplePostgresClient {
         Ok(())
     }
 
-    fn update_token_mint_idx_gen<G: GenericTokenAccount>(
+    /// Generic function to update a single token mint index.
+    fn update_token_mint_index_gen<G: GenericTokenAccount>(
         client: &mut Client,
         statement: &Statement,
         token_id: &Pubkey,
@@ -324,19 +337,19 @@ impl SimplePostgresClient {
         Ok(())
     }
 
-    pub fn update_token_owner_idx(
+    pub fn update_token_owner_index(
         client: &mut Client,
         statement: &Statement,
         account: &DbAccountInfo,
     ) -> Result<(), AccountsDbPluginError> {
-        Self::update_token_owner_idx_gen::<inline_spl_token::Account>(
+        Self::update_token_owner_index_gen::<inline_spl_token::Account>(
             client,
             statement,
             &inline_spl_token::id(),
             account,
         )?;
 
-        Self::update_token_owner_idx_gen::<inline_spl_token_2022::Account>(
+        Self::update_token_owner_index_gen::<inline_spl_token_2022::Account>(
             client,
             statement,
             &inline_spl_token_2022::id(),
@@ -344,19 +357,19 @@ impl SimplePostgresClient {
         )
     }
 
-    pub fn update_token_mint_idx(
+    pub fn update_token_mint_index(
         client: &mut Client,
         statement: &Statement,
         account: &DbAccountInfo,
     ) -> Result<(), AccountsDbPluginError> {
-        Self::update_token_mint_idx_gen::<inline_spl_token::Account>(
+        Self::update_token_mint_index_gen::<inline_spl_token::Account>(
             client,
             statement,
             &inline_spl_token::id(),
             account,
         )?;
 
-        Self::update_token_mint_idx_gen::<inline_spl_token_2022::Account>(
+        Self::update_token_mint_index_gen::<inline_spl_token_2022::Account>(
             client,
             statement,
             &inline_spl_token_2022::id(),

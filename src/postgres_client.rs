@@ -56,10 +56,10 @@ struct PostgresSqlClientWrapper {
     update_transaction_log_stmt: Statement,
     update_block_metadata_stmt: Statement,
     insert_account_audit_stmt: Option<Statement>,
-    insert_token_owner_idx_stmt: Option<Statement>,
-    insert_token_mint_idx_stmt: Option<Statement>,
-    bulk_insert_token_owner_idx_stmt: Option<Statement>,
-    bulk_insert_token_mint_idx_stmt: Option<Statement>,
+    insert_token_owner_index_stmt: Option<Statement>,
+    insert_token_mint_index_stmt: Option<Statement>,
+    bulk_insert_token_owner_index_stmt: Option<Statement>,
+    bulk_insert_token_mint_index_stmt: Option<Statement>,
 }
 
 pub struct SimplePostgresClient {
@@ -67,8 +67,8 @@ pub struct SimplePostgresClient {
     pending_account_updates: Vec<DbAccountInfo>,
     index_token_owner: bool,
     index_token_mint: bool,
-    pending_token_owner_idx: Vec<TokenSecondaryIndex>,
-    pending_token_mint_idx: Vec<TokenSecondaryIndex>,
+    pending_token_owner_index: Vec<TokenSecondaryIndex>,
+    pending_token_mint_index: Vec<TokenSecondaryIndex>,
     client: Mutex<PostgresSqlClientWrapper>,
 }
 
@@ -425,7 +425,7 @@ impl SimplePostgresClient {
         client: &mut Client,
         config: &AccountsDbPluginPostgresConfig,
     ) -> Result<Statement, AccountsDbPluginError> {
-        let stmt = "INSERT INTO spl_token_owner_index AS owner_idx (owner_key, inner_key) \
+        let stmt = "INSERT INTO spl_token_owner_index AS owner_index (owner_key, inner_key) \
         VALUES ($1, $2) ON CONFLICT DO NOTHING";
 
         Self::prepare_query_statement(client, config, stmt)
@@ -435,7 +435,7 @@ impl SimplePostgresClient {
         client: &mut Client,
         config: &AccountsDbPluginPostgresConfig,
     ) -> Result<Statement, AccountsDbPluginError> {
-        let stmt = "INSERT INTO spl_token_mint_index AS mint_idx (mint_key, inner_key) \
+        let stmt = "INSERT INTO spl_token_mint_index AS mint_index (mint_key, inner_key) \
         VALUES ($1, $2) ON CONFLICT DO NOTHING";
 
         Self::prepare_query_statement(client, config, stmt)
@@ -591,17 +591,17 @@ impl SimplePostgresClient {
         let client = self.client.get_mut().unwrap();
         let insert_account_audit_stmt = &client.insert_account_audit_stmt;
         let statement = &client.update_account_stmt;
-        let insert_token_owner_idx_stmt = &client.insert_token_owner_idx_stmt;
-        let insert_token_mint_idx_stmt = &client.insert_token_mint_idx_stmt;
+        let insert_token_owner_index_stmt = &client.insert_token_owner_index_stmt;
+        let insert_token_mint_index_stmt = &client.insert_token_mint_index_stmt;
         let client = &mut client.client;
         Self::upsert_account_internal(account, statement, client, insert_account_audit_stmt)?;
 
-        if let Some(insert_token_owner_idx_stmt) = insert_token_owner_idx_stmt {
-            Self::update_token_owner_idx(client, insert_token_owner_idx_stmt, account)?;
+        if let Some(insert_token_owner_index_stmt) = insert_token_owner_index_stmt {
+            Self::update_token_owner_index(client, insert_token_owner_index_stmt, account)?;
         }
 
-        if let Some(insert_token_mint_idx_stmt) = insert_token_mint_idx_stmt {
-            Self::update_token_mint_idx(client, insert_token_mint_idx_stmt, account)?;
+        if let Some(insert_token_mint_index_stmt) = insert_token_mint_index_stmt {
+            Self::update_token_mint_index(client, insert_token_mint_index_stmt, account)?;
         }
 
         Ok(())
@@ -616,8 +616,8 @@ impl SimplePostgresClient {
         self.pending_account_updates.push(account);
 
         self.bulk_insert_accounts()?;
-        self.bulk_insert_token_owner_idx()?;
-        self.bulk_insert_token_mint_idx()
+        self.bulk_insert_token_owner_index()?;
+        self.bulk_insert_token_mint_index()
     }
 
     fn bulk_insert_accounts(&mut self) -> Result<(), AccountsDbPluginError> {
@@ -731,21 +731,21 @@ impl SimplePostgresClient {
             None
         };
 
-        let bulk_insert_token_owner_idx_stmt = if let Some(true) = config.index_token_owner {
+        let bulk_insert_token_owner_index_stmt = if let Some(true) = config.index_token_owner {
             let stmt = Self::build_bulk_token_owner_index_insert_statement(&mut client, config)?;
             Some(stmt)
         } else {
             None
         };
 
-        let bulk_insert_token_mint_idx_stmt = if let Some(true) = config.index_token_mint {
+        let bulk_insert_token_mint_index_stmt = if let Some(true) = config.index_token_mint {
             let stmt = Self::build_bulk_token_mint_index_insert_statement(&mut client, config)?;
             Some(stmt)
         } else {
             None
         };
 
-        let insert_token_owner_idx_stmt = if let Some(true) = config.index_token_owner {
+        let insert_token_owner_index_stmt = if let Some(true) = config.index_token_owner {
             Some(Self::build_single_token_owner_index_upsert_statement(
                 &mut client,
                 config,
@@ -754,7 +754,7 @@ impl SimplePostgresClient {
             None
         };
 
-        let insert_token_mint_idx_stmt = if let Some(true) = config.index_token_mint {
+        let insert_token_mint_index_stmt = if let Some(true) = config.index_token_mint {
             Some(Self::build_single_token_mint_index_upsert_statement(
                 &mut client,
                 config,
@@ -776,15 +776,15 @@ impl SimplePostgresClient {
                 update_transaction_log_stmt,
                 update_block_metadata_stmt,
                 insert_account_audit_stmt,
-                insert_token_owner_idx_stmt,
-                insert_token_mint_idx_stmt,
-                bulk_insert_token_owner_idx_stmt,
-                bulk_insert_token_mint_idx_stmt,
+                insert_token_owner_index_stmt,
+                insert_token_mint_index_stmt,
+                bulk_insert_token_owner_index_stmt,
+                bulk_insert_token_mint_index_stmt,
             }),
             index_token_owner: config.index_token_owner.unwrap_or_default(),
             index_token_mint: config.index_token_mint.unwrap_or(false),
-            pending_token_owner_idx: Vec::with_capacity(batch_size),
-            pending_token_mint_idx: Vec::with_capacity(batch_size),
+            pending_token_owner_index: Vec::with_capacity(batch_size),
+            pending_token_mint_index: Vec::with_capacity(batch_size),
         })
     }
 }
