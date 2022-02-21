@@ -337,6 +337,7 @@ impl SimplePostgresClient {
         Ok(())
     }
 
+    /// Function for updating a single token owner index.
     pub fn update_token_owner_index(
         client: &mut Client,
         statement: &Statement,
@@ -357,6 +358,7 @@ impl SimplePostgresClient {
         )
     }
 
+    /// Function for updating a single token mint index.
     pub fn update_token_mint_index(
         client: &mut Client,
         statement: &Statement,
@@ -375,5 +377,13 @@ impl SimplePostgresClient {
             &inline_spl_token_2022::id(),
             account,
         )
+    }
+
+    /// Clean up the buffered indexes -- we do not need to
+    /// write them to disk individually as they have already been handled
+    /// when the accounts were flushed out individually in `upsert_account_internal`.
+    pub fn clear_buffered_indexes(&mut self) {
+        self.pending_token_owner_index.clear();
+        self.pending_token_mint_index.clear();
     }
 }

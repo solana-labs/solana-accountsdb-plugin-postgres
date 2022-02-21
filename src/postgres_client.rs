@@ -550,6 +550,8 @@ impl SimplePostgresClient {
         statement: &Statement,
         client: &mut Client,
         insert_account_audit_stmt: &Option<Statement>,
+        insert_token_owner_index_stmt: &Option<Statement>,
+        insert_token_mint_index_stmt: &Option<Statement>,
     ) -> Result<(), AccountsDbPluginError> {
         let lamports = account.lamports() as i64;
         let rent_epoch = account.rent_epoch() as i64;
@@ -583,6 +585,14 @@ impl SimplePostgresClient {
             Self::insert_account_audit(account, statement, client)?;
         }
 
+        if let Some(insert_token_owner_index_stmt) = insert_token_owner_index_stmt {
+            Self::update_token_owner_index(client, insert_token_owner_index_stmt, account)?;
+        }
+
+        if let Some(insert_token_mint_index_stmt) = insert_token_mint_index_stmt {
+            Self::update_token_mint_index(client, insert_token_mint_index_stmt, account)?;
+        }
+
         Ok(())
     }
 
@@ -594,15 +604,14 @@ impl SimplePostgresClient {
         let insert_token_owner_index_stmt = &client.insert_token_owner_index_stmt;
         let insert_token_mint_index_stmt = &client.insert_token_mint_index_stmt;
         let client = &mut client.client;
-        Self::upsert_account_internal(account, statement, client, insert_account_audit_stmt)?;
-
-        if let Some(insert_token_owner_index_stmt) = insert_token_owner_index_stmt {
-            Self::update_token_owner_index(client, insert_token_owner_index_stmt, account)?;
-        }
-
-        if let Some(insert_token_mint_index_stmt) = insert_token_mint_index_stmt {
-            Self::update_token_mint_index(client, insert_token_mint_index_stmt, account)?;
-        }
+        Self::upsert_account_internal(
+            account,
+            statement,
+            client,
+            insert_account_audit_stmt,
+            insert_token_owner_index_stmt,
+            insert_token_mint_index_stmt,
+        )?;
 
         Ok(())
     }
@@ -691,12 +700,22 @@ impl SimplePostgresClient {
         let client = self.client.get_mut().unwrap();
         let insert_account_audit_stmt = &client.insert_account_audit_stmt;
         let statement = &client.update_account_stmt;
+        let insert_token_owner_index_stmt = &client.insert_token_owner_index_stmt;
+        let insert_token_mint_index_stmt = &client.insert_token_mint_index_stmt;
         let client = &mut client.client;
 
         for account in self.pending_account_updates.drain(..) {
-            Self::upsert_account_internal(&account, statement, client, insert_account_audit_stmt)?;
+            Self::upsert_account_internal(
+                &account,
+                statement,
+                client,
+                insert_account_audit_stmt,
+                insert_token_owner_index_stmt,
+                insert_token_mint_index_stmt,
+            )?;
         }
 
+        self.clear_buffered_indexes();
         Ok(())
     }
 
