@@ -43,7 +43,7 @@ impl SimplePostgresClient {
         config: &AccountsDbPluginPostgresConfig,
     ) -> Result<Statement, AccountsDbPluginError> {
         let stmt = "INSERT INTO spl_token_mint_index AS mint_index (mint_key, inner_key, slot) \
-        VALUES ($1, $2, $3) ON CONFLICT (owner_key, inner_key) DO UPDATE SET slot=excluded.slot where mint_index.slot < excluded.slot";
+        VALUES ($1, $2, $3) ON CONFLICT (mint_key, inner_key) DO UPDATE SET slot=excluded.slot where mint_index.slot < excluded.slot";
 
         Self::prepare_query_statement(client, config, stmt)
     }
@@ -114,7 +114,7 @@ impl SimplePostgresClient {
         }
 
         let handle_conflict =
-            "ON CONFLICT (owner_key, inner_key) DO UPDATE SET slot=excluded.slot where index.slot < excluded.slot";
+            "ON CONFLICT (mint_key, inner_key) DO UPDATE SET slot=excluded.slot where index.slot < excluded.slot";
 
         stmt = format!("{} {}", stmt, handle_conflict);
 
