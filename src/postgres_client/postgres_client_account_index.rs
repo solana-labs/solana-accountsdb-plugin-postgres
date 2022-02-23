@@ -50,7 +50,8 @@ impl SimplePostgresClient {
             }
         }
 
-        let handle_conflict = "ON CONFLICT DO UPDATE SET slot=excluded.slot where index.slot < excluded.slot";
+        let handle_conflict =
+            "ON CONFLICT DO UPDATE SET slot=excluded.slot where index.slot < excluded.slot";
 
         stmt = format!("{} {}", stmt, handle_conflict);
 
@@ -78,8 +79,9 @@ impl SimplePostgresClient {
         let batch_size = config
             .batch_size
             .unwrap_or(DEFAULT_ACCOUNTS_INSERT_BATCH_SIZE);
-        let mut stmt =
-            String::from("INSERT INTO spl_token_mint_index AS index (mint_key, inner_key, slot) VALUES");
+        let mut stmt = String::from(
+            "INSERT INTO spl_token_mint_index AS index (mint_key, inner_key, slot) VALUES",
+        );
         for j in 0..batch_size {
             let row = j * TOKEN_INDEX_COLUMN_COUNT;
             let val_str = format!("(${}, ${}, ${})", row + 1, row + 2, row + 3);
@@ -91,7 +93,8 @@ impl SimplePostgresClient {
             }
         }
 
-        let handle_conflict = "ON CONFLICT DO UPDATE SET slot=excluded.slot where index.slot < excluded.slot";
+        let handle_conflict =
+            "ON CONFLICT DO UPDATE SET slot=excluded.slot where index.slot < excluded.slot";
 
         stmt = format!("{} {}", stmt, handle_conflict);
 
@@ -240,7 +243,7 @@ impl SimplePostgresClient {
                 self.pending_token_owner_index.push(TokenSecondaryIndex {
                     owner: owner_key,
                     inner_key: pubkey.to_vec(),
-                    slot: account.slot
+                    slot: account.slot,
                 });
             }
         }
@@ -259,7 +262,7 @@ impl SimplePostgresClient {
                 self.pending_token_mint_index.push(TokenSecondaryIndex {
                     owner: mint_key,
                     inner_key: pubkey.to_vec(),
-                    slot: account.slot
+                    slot: account.slot,
                 })
             }
         }
