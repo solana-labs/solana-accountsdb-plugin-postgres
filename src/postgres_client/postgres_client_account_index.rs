@@ -19,11 +19,12 @@ use {
     tokio_postgres::types,
 };
 
-const TOKEN_INDEX_COLUMN_COUNT: usize = 2;
+const TOKEN_INDEX_COLUMN_COUNT: usize = 3;
 /// Model the secondary index for token owner and mint
 pub struct TokenSecondaryIndex {
     owner: Vec<u8>,
     inner_key: Vec<u8>,
+    slot: i64,
 }
 
 impl SimplePostgresClient {
@@ -36,11 +37,11 @@ impl SimplePostgresClient {
             .batch_size
             .unwrap_or(DEFAULT_ACCOUNTS_INSERT_BATCH_SIZE);
         let mut stmt = String::from(
-            "INSERT INTO spl_token_owner_index AS index (owner_key, inner_key) VALUES",
+            "INSERT INTO spl_token_owner_index AS index (owner_key, inner_key, slot) VALUES",
         );
         for j in 0..batch_size {
             let row = j * TOKEN_INDEX_COLUMN_COUNT;
-            let val_str = format!("(${}, ${})", row + 1, row + 2,);
+            let val_str = format!("(${}, ${}), ${}", row + 1, row + 2, row + 3);
 
             if j == 0 {
                 stmt = format!("{} {}", &stmt, val_str);
@@ -49,7 +50,7 @@ impl SimplePostgresClient {
             }
         }
 
-        let handle_conflict = "ON CONFLICT DO NOTHING";
+        let handle_conflict = "ON CONFLICT DO UPDATE SET slot=excluded.slot where index.slot < excluded.slot";
 
         stmt = format!("{} {}", stmt, handle_conflict);
 
@@ -78,10 +79,10 @@ impl SimplePostgresClient {
             .batch_size
             .unwrap_or(DEFAULT_ACCOUNTS_INSERT_BATCH_SIZE);
         let mut stmt =
-            String::from("INSERT INTO spl_token_mint_index AS index (mint_key, inner_key) VALUES");
+            String::from("INSERT INTO spl_token_mint_index AS index (mint_key, inner_key, slot) VALUES");
         for j in 0..batch_size {
             let row = j * TOKEN_INDEX_COLUMN_COUNT;
-            let val_str = format!("(${}, ${})", row + 1, row + 2,);
+            let val_str = format!("(${}, ${}, ${})", row + 1, row + 2, row + 3);
 
             if j == 0 {
                 stmt = format!("{} {}", &stmt, val_str);
@@ -90,7 +91,7 @@ impl SimplePostgresClient {
             }
         }
 
-        let handle_conflict = "ON CONFLICT DO NOTHING";
+        let handle_conflict = "ON CONFLICT DO UPDATE SET slot=excluded.slot where index.slot < excluded.slot";
 
         stmt = format!("{} {}", stmt, handle_conflict);
 
@@ -122,6 +123,7 @@ impl SimplePostgresClient {
                 let index = &self.pending_token_owner_index[j];
                 values.push(&index.owner);
                 values.push(&index.inner_key);
+                values.push(&index.slot);
             }
             measure.stop();
             inc_new_counter_debug!(
@@ -179,6 +181,7 @@ impl SimplePostgresClient {
                 let index = &self.pending_token_mint_index[j];
                 values.push(&index.owner);
                 values.push(&index.inner_key);
+                values.push(&index.slot);
             }
             measure.stop();
             inc_new_counter_debug!(
@@ -237,6 +240,7 @@ impl SimplePostgresClient {
                 self.pending_token_owner_index.push(TokenSecondaryIndex {
                     owner: owner_key,
                     inner_key: pubkey.to_vec(),
+                    slot: account.slot
                 });
             }
         }
@@ -255,6 +259,7 @@ impl SimplePostgresClient {
                 self.pending_token_mint_index.push(TokenSecondaryIndex {
                     owner: mint_key,
                     inner_key: pubkey.to_vec(),
+                    slot: account.slot
                 })
             }
         }
@@ -296,7 +301,8 @@ impl SimplePostgresClient {
             if let Some(owner_key) = G::unpack_account_owner(account.data()) {
                 let owner_key = owner_key.to_bytes().to_vec();
                 let pubkey = account.pubkey();
-                let result = client.execute(statement, &[&owner_key, &pubkey]);
+                let slot = account.slot;
+                let result = client.execute(statement, &[&owner_key, &pubkey, &slot]);
                 if let Err(err) = result {
                     let msg = format!(
                         "Failed to update the token owner index to the PostgreSQL database. Error: {:?}",
@@ -322,7 +328,8 @@ impl SimplePostgresClient {
             if let Some(mint_key) = G::unpack_account_mint(account.data()) {
                 let mint_key = mint_key.to_bytes().to_vec();
                 let pubkey = account.pubkey();
-                let result = client.execute(statement, &[&mint_key, &pubkey]);
+                let slot = account.slot;
+                let result = client.execute(statement, &[&mint_key, &pubkey, &slot]);
                 if let Err(err) = result {
                     let msg = format!(
                         "Failed to update the token mint index to the PostgreSQL database. Error: {:?}",
