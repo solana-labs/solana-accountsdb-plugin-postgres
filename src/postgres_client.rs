@@ -421,26 +421,6 @@ impl SimplePostgresClient {
         }
     }
 
-    fn build_single_token_owner_index_upsert_statement(
-        client: &mut Client,
-        config: &AccountsDbPluginPostgresConfig,
-    ) -> Result<Statement, AccountsDbPluginError> {
-        let stmt = "INSERT INTO spl_token_owner_index AS owner_index (owner_key, inner_key) \
-        VALUES ($1, $2) ON CONFLICT DO NOTHING";
-
-        Self::prepare_query_statement(client, config, stmt)
-    }
-
-    fn build_single_token_mint_index_upsert_statement(
-        client: &mut Client,
-        config: &AccountsDbPluginPostgresConfig,
-    ) -> Result<Statement, AccountsDbPluginError> {
-        let stmt = "INSERT INTO spl_token_mint_index AS mint_index (mint_key, inner_key) \
-        VALUES ($1, $2) ON CONFLICT DO NOTHING";
-
-        Self::prepare_query_statement(client, config, stmt)
-    }
-
     fn build_account_audit_insert_statement(
         client: &mut Client,
         config: &AccountsDbPluginPostgresConfig,

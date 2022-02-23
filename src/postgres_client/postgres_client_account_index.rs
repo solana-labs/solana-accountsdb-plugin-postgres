@@ -28,6 +28,26 @@ pub struct TokenSecondaryIndex {
 }
 
 impl SimplePostgresClient {
+    pub fn build_single_token_owner_index_upsert_statement(
+        client: &mut Client,
+        config: &AccountsDbPluginPostgresConfig,
+    ) -> Result<Statement, AccountsDbPluginError> {
+        let stmt = "INSERT INTO spl_token_owner_index AS owner_index (owner_key, inner_key, slot) \
+        VALUES ($1, $2, $3) ON CONFLICT DO UPDATE SET slot=excluded.slot where owner_index.slot < excluded.slot";
+
+        Self::prepare_query_statement(client, config, stmt)
+    }
+
+    pub fn build_single_token_mint_index_upsert_statement(
+        client: &mut Client,
+        config: &AccountsDbPluginPostgresConfig,
+    ) -> Result<Statement, AccountsDbPluginError> {
+        let stmt = "INSERT INTO spl_token_mint_index AS mint_index (mint_key, inner_key, slot) \
+        VALUES ($1, $2, $3) ON CONFLICT DO UPDATE SET slot=excluded.slot where mint_index.slot < excluded.slot";
+
+        Self::prepare_query_statement(client, config, stmt)
+    }
+
     /// Build the token owner index bulk insert statement
     pub fn build_bulk_token_owner_index_insert_statement(
         client: &mut Client,
@@ -41,7 +61,7 @@ impl SimplePostgresClient {
         );
         for j in 0..batch_size {
             let row = j * TOKEN_INDEX_COLUMN_COUNT;
-            let val_str = format!("(${}, ${}), ${}", row + 1, row + 2, row + 3);
+            let val_str = format!("(${}, ${}, ${})", row + 1, row + 2, row + 3);
 
             if j == 0 {
                 stmt = format!("{} {}", &stmt, val_str);
