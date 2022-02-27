@@ -8,18 +8,6 @@ pub(crate) mod new_token_program {
     solana_sdk::declare_id!("nTok2oJvx1CgbYA2SznfJLmnKLEL6sYdh2ypZms2nhm");
 }
 
-/*
-    spl_token::state::Account {
-        mint: Pubkey,
-        owner: Pubkey,
-        amount: u64,
-        delegate: COption<Pubkey>,
-        state: AccountState,
-        is_native: COption<u64>,
-        delegated_amount: u64,
-        close_authority: COption<Pubkey>,
-    }
-*/
 pub const SPL_TOKEN_ACCOUNT_MINT_OFFSET: usize = 0;
 pub const SPL_TOKEN_ACCOUNT_OWNER_OFFSET: usize = 32;
 const SPL_TOKEN_ACCOUNT_LENGTH: usize = 165;

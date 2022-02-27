@@ -56,14 +56,14 @@ pub struct AccountsDbPluginPostgresConfig {
     /// The default is 10.
     pub batch_size: Option<usize>,
 
-    /// Controls if to panic the validator in case of errors
+    /// Controls whether to panic the validator in case of errors
     /// writing to PostgreSQL server. The default is false
     pub panic_on_db_errors: Option<bool>,
 
-    /// Indicates if to store historical data for accounts
+    /// Indicates whether to store historical data for accounts
     pub store_account_historical_data: Option<bool>,
 
-    /// Controls if to use SSL based connection to the database server.
+    /// Controls whether to use SSL based connection to the database server.
     /// The default is false
     pub use_ssl: Option<bool>,
 
@@ -76,10 +76,10 @@ pub struct AccountsDbPluginPostgresConfig {
     /// Specify the path to the local client's private PEM key file.
     pub client_key: Option<String>,
 
-    /// Controls if to index the token owners. The default is false
+    /// Controls whether to index the token owners. The default is false
     pub index_token_owner: Option<bool>,
 
-    /// Controls if to index the token mints. The default is false
+    /// Controls whetherf to index the token mints. The default is false
     pub index_token_mint: Option<bool>,
 }
 
