@@ -10,7 +10,7 @@ use {
         accountsdb_plugin_postgres::{
             AccountsDbPluginPostgresConfig, AccountsDbPluginPostgresError,
         },
-        postgres_client::postgres_client_account_index::TokenSecondaryIndex,
+        postgres_client::postgres_client_account_index::TokenSecondaryIndexEntry,
     },
     chrono::Utc,
     crossbeam_channel::{bounded, Receiver, RecvTimeoutError, Sender},
@@ -67,8 +67,8 @@ pub struct SimplePostgresClient {
     pending_account_updates: Vec<DbAccountInfo>,
     index_token_owner: bool,
     index_token_mint: bool,
-    pending_token_owner_index: Vec<TokenSecondaryIndex>,
-    pending_token_mint_index: Vec<TokenSecondaryIndex>,
+    pending_token_owner_index: Vec<TokenSecondaryIndexEntry>,
+    pending_token_mint_index: Vec<TokenSecondaryIndexEntry>,
     client: Mutex<PostgresSqlClientWrapper>,
 }
 

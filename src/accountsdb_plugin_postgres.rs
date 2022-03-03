@@ -32,7 +32,7 @@ impl std::fmt::Debug for AccountsDbPluginPostgres {
     }
 }
 
-/// The Configurqation for the PostgreSQL plugin
+/// The Configuration for the PostgreSQL plugin
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AccountsDbPluginPostgresConfig {
     /// The host name or IP of the PostgreSQL server

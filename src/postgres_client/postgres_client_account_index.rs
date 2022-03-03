@@ -20,10 +20,16 @@ use {
 };
 
 const TOKEN_INDEX_COLUMN_COUNT: usize = 3;
-/// Model the secondary index for token owner and mint
-pub struct TokenSecondaryIndex {
-    owner: Vec<u8>,
+/// Struct for the secondary index for both token account's owner and mint index,
+pub struct TokenSecondaryIndexEntry {
+    /// In case of token owner, the secondary key is the Pubkey of the owner and in case of
+    /// token index the secondary_key is the Pubkey of mint.
+    secondary_key: Vec<u8>,
+
+    /// The Pubkey of the account
     account_key: Vec<u8>,
+
+    /// Record the slot at which the index entry is created.
     slot: i64,
 }
 
@@ -32,27 +38,28 @@ impl SimplePostgresClient {
         client: &mut Client,
         config: &AccountsDbPluginPostgresConfig,
     ) -> Result<Statement, AccountsDbPluginError> {
-        let stmt =
+        const BULK_OWNER_INDEX_INSERT_STATEMENT: &str =
             "INSERT INTO spl_token_owner_index AS owner_index (owner_key, account_key, slot) \
         VALUES ($1, $2, $3) \
         ON CONFLICT (owner_key, account_key) \
         DO UPDATE SET slot=excluded.slot \
         WHERE owner_index.slot < excluded.slot";
 
-        Self::prepare_query_statement(client, config, stmt)
+        Self::prepare_query_statement(client, config, BULK_OWNER_INDEX_INSERT_STATEMENT)
     }
 
     pub fn build_single_token_mint_index_upsert_statement(
         client: &mut Client,
         config: &AccountsDbPluginPostgresConfig,
     ) -> Result<Statement, AccountsDbPluginError> {
-        let stmt = "INSERT INTO spl_token_mint_index AS mint_index (mint_key, account_key, slot) \
+        const BULK_MINT_INDEX_INSERT_STATEMENT: &str =
+            "INSERT INTO spl_token_mint_index AS mint_index (mint_key, account_key, slot) \
         VALUES ($1, $2, $3) \
         ON CONFLICT (mint_key, account_key) \
         DO UPDATE SET slot=excluded.slot \
         WHERE mint_index.slot < excluded.slot";
 
-        Self::prepare_query_statement(client, config, stmt)
+        Self::prepare_query_statement(client, config, BULK_MINT_INDEX_INSERT_STATEMENT)
     }
 
     /// Common build the token mint index bulk insert statement.
@@ -132,16 +139,16 @@ impl SimplePostgresClient {
     fn bulk_insert_token_index_common(
         batch_size: usize,
         client: &mut Client,
-        indexes: &mut Vec<TokenSecondaryIndex>,
+        index_entries: &mut Vec<TokenSecondaryIndexEntry>,
         query: &Statement,
     ) -> Result<(), AccountsDbPluginError> {
-        if indexes.len() == batch_size {
+        if index_entries.len() == batch_size {
             let mut measure = Measure::start("accountsdb-plugin-postgres-prepare-index-values");
 
             let mut values: Vec<&(dyn types::ToSql + Sync)> =
                 Vec::with_capacity(batch_size * TOKEN_INDEX_COLUMN_COUNT);
-            for index in indexes.iter().take(batch_size) {
-                values.push(&index.owner);
+            for index in index_entries.iter().take(batch_size) {
+                values.push(&index.secondary_key);
                 values.push(&index.account_key);
                 values.push(&index.slot);
             }
@@ -156,7 +163,7 @@ impl SimplePostgresClient {
             let mut measure = Measure::start("accountsdb-plugin-postgres-update-index-account");
             let result = client.query(query, &values);
 
-            indexes.clear();
+            index_entries.clear();
 
             if let Err(err) = result {
                 let msg = format!(
@@ -214,15 +221,16 @@ impl SimplePostgresClient {
         token_id: &Pubkey,
         account: &DbAccountInfo,
     ) {
-        if account.owner() == token_id.to_bytes() {
+        if account.owner() == token_id.as_ref() {
             if let Some(owner_key) = G::unpack_account_owner(account.data()) {
-                let owner_key = owner_key.to_bytes().to_vec();
+                let owner_key = owner_key.as_ref().to_vec();
                 let pubkey = account.pubkey();
-                self.pending_token_owner_index.push(TokenSecondaryIndex {
-                    owner: owner_key,
-                    account_key: pubkey.to_vec(),
-                    slot: account.slot,
-                });
+                self.pending_token_owner_index
+                    .push(TokenSecondaryIndexEntry {
+                        secondary_key: owner_key,
+                        account_key: pubkey.to_vec(),
+                        slot: account.slot,
+                    });
             }
         }
     }
@@ -233,15 +241,16 @@ impl SimplePostgresClient {
         token_id: &Pubkey,
         account: &DbAccountInfo,
     ) {
-        if account.owner() == token_id.to_bytes() {
+        if account.owner() == token_id.as_ref() {
             if let Some(mint_key) = G::unpack_account_mint(account.data()) {
-                let mint_key = mint_key.to_bytes().to_vec();
+                let mint_key = mint_key.as_ref().to_vec();
                 let pubkey = account.pubkey();
-                self.pending_token_mint_index.push(TokenSecondaryIndex {
-                    owner: mint_key,
-                    account_key: pubkey.to_vec(),
-                    slot: account.slot,
-                })
+                self.pending_token_mint_index
+                    .push(TokenSecondaryIndexEntry {
+                        secondary_key: mint_key,
+                        account_key: pubkey.to_vec(),
+                        slot: account.slot,
+                    })
             }
         }
     }
@@ -278,9 +287,9 @@ impl SimplePostgresClient {
         token_id: &Pubkey,
         account: &DbAccountInfo,
     ) -> Result<(), AccountsDbPluginError> {
-        if account.owner() == token_id.to_bytes() {
+        if account.owner() == token_id.as_ref() {
             if let Some(owner_key) = G::unpack_account_owner(account.data()) {
-                let owner_key = owner_key.to_bytes().to_vec();
+                let owner_key = owner_key.as_ref().to_vec();
                 let pubkey = account.pubkey();
                 let slot = account.slot;
                 let result = client.execute(statement, &[&owner_key, &pubkey, &slot]);
@@ -305,9 +314,9 @@ impl SimplePostgresClient {
         token_id: &Pubkey,
         account: &DbAccountInfo,
     ) -> Result<(), AccountsDbPluginError> {
-        if account.owner() == token_id.to_bytes() {
+        if account.owner() == token_id.as_ref() {
             if let Some(mint_key) = G::unpack_account_mint(account.data()) {
-                let mint_key = mint_key.to_bytes().to_vec();
+                let mint_key = mint_key.as_ref().to_vec();
                 let pubkey = account.pubkey();
                 let slot = account.slot;
                 let result = client.execute(statement, &[&mint_key, &pubkey, &slot]);
