@@ -177,18 +177,22 @@ CREATE TABLE block (
 -- The table storing spl token owner to account indexes
 CREATE TABLE spl_token_owner_index (
     owner_key BYTEA NOT NULL,
-    inner_key BYTEA NOT NULL
+    account_key BYTEA NOT NULL,
+    slot BIGINT NOT NULL
 );
 
 CREATE INDEX spl_token_owner_index_owner_key ON spl_token_owner_index (owner_key);
+CREATE UNIQUE INDEX spl_token_owner_index_owner_pair ON spl_token_owner_index (owner_key, account_key);
 
 -- The table storing spl mint to account indexes
 CREATE TABLE spl_token_mint_index (
     mint_key BYTEA NOT NULL,
-    inner_key BYTEA NOT NULL
+    account_key BYTEA NOT NULL,
+    slot BIGINT NOT NULL
 );
 
 CREATE INDEX spl_token_mint_index_mint_key ON spl_token_mint_index (mint_key);
+CREATE UNIQUE INDEX spl_token_mint_index_mint_pair ON spl_token_mint_index (mint_key, account_key);
 
 /**
  * The following is for keeping historical data for accounts and is not required for plugin to work.
@@ -207,6 +211,8 @@ CREATE TABLE account_audit (
 );
 
 CREATE INDEX account_audit_account_key ON  account_audit (pubkey, write_version);
+
+CREATE INDEX account_audit_pubkey_slot ON account_audit (pubkey, slot);
 
 CREATE FUNCTION audit_account_update() RETURNS trigger AS $audit_account_update$
     BEGIN

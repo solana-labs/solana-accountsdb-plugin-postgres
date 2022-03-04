@@ -1,12 +1,16 @@
 #![allow(clippy::integer_arithmetic)]
 
+mod postgres_client_account_index;
 mod postgres_client_block_metadata;
 mod postgres_client_transaction;
 
 /// A concurrent implementation for writing accounts into the PostgreSQL in parallel.
 use {
-    crate::accountsdb_plugin_postgres::{
-        AccountsDbPluginPostgresConfig, AccountsDbPluginPostgresError,
+    crate::{
+        accountsdb_plugin_postgres::{
+            AccountsDbPluginPostgresConfig, AccountsDbPluginPostgresError,
+        },
+        postgres_client::postgres_client_account_index::TokenSecondaryIndexEntry,
     },
     chrono::Utc,
     crossbeam_channel::{bounded, Receiver, RecvTimeoutError, Sender},
@@ -52,11 +56,19 @@ struct PostgresSqlClientWrapper {
     update_transaction_log_stmt: Statement,
     update_block_metadata_stmt: Statement,
     insert_account_audit_stmt: Option<Statement>,
+    insert_token_owner_index_stmt: Option<Statement>,
+    insert_token_mint_index_stmt: Option<Statement>,
+    bulk_insert_token_owner_index_stmt: Option<Statement>,
+    bulk_insert_token_mint_index_stmt: Option<Statement>,
 }
 
 pub struct SimplePostgresClient {
     batch_size: usize,
     pending_account_updates: Vec<DbAccountInfo>,
+    index_token_owner: bool,
+    index_token_mint: bool,
+    pending_token_owner_index: Vec<TokenSecondaryIndexEntry>,
+    pending_token_mint_index: Vec<TokenSecondaryIndexEntry>,
     client: Mutex<PostgresSqlClientWrapper>,
 }
 
@@ -389,6 +401,26 @@ impl SimplePostgresClient {
         }
     }
 
+    fn prepare_query_statement(
+        client: &mut Client,
+        config: &AccountsDbPluginPostgresConfig,
+        stmt: &str,
+    ) -> Result<Statement, AccountsDbPluginError> {
+        let statement = client.prepare(stmt);
+
+        match statement {
+            Err(err) => {
+                return Err(AccountsDbPluginError::Custom(Box::new(AccountsDbPluginPostgresError::DataSchemaError {
+                    msg: format!(
+                        "Error in preparing for the statement {} for PostgreSQL database: {} host: {:?} user: {:?} config: {:?}",
+                        stmt, err, config.host, config.user, config
+                    ),
+                })));
+            }
+            Ok(statement) => Ok(statement),
+        }
+    }
+
     fn build_account_audit_insert_statement(
         client: &mut Client,
         config: &AccountsDbPluginPostgresConfig,
@@ -498,6 +530,8 @@ impl SimplePostgresClient {
         statement: &Statement,
         client: &mut Client,
         insert_account_audit_stmt: &Option<Statement>,
+        insert_token_owner_index_stmt: &Option<Statement>,
+        insert_token_mint_index_stmt: &Option<Statement>,
     ) -> Result<(), AccountsDbPluginError> {
         let lamports = account.lamports() as i64;
         let rent_epoch = account.rent_epoch() as i64;
@@ -531,6 +565,14 @@ impl SimplePostgresClient {
             Self::insert_account_audit(account, statement, client)?;
         }
 
+        if let Some(insert_token_owner_index_stmt) = insert_token_owner_index_stmt {
+            Self::update_token_owner_index(client, insert_token_owner_index_stmt, account)?;
+        }
+
+        if let Some(insert_token_mint_index_stmt) = insert_token_mint_index_stmt {
+            Self::update_token_mint_index(client, insert_token_mint_index_stmt, account)?;
+        }
+
         Ok(())
     }
 
@@ -539,8 +581,19 @@ impl SimplePostgresClient {
         let client = self.client.get_mut().unwrap();
         let insert_account_audit_stmt = &client.insert_account_audit_stmt;
         let statement = &client.update_account_stmt;
+        let insert_token_owner_index_stmt = &client.insert_token_owner_index_stmt;
+        let insert_token_mint_index_stmt = &client.insert_token_mint_index_stmt;
         let client = &mut client.client;
-        Self::upsert_account_internal(account, statement, client, insert_account_audit_stmt)
+        Self::upsert_account_internal(
+            account,
+            statement,
+            client,
+            insert_account_audit_stmt,
+            insert_token_owner_index_stmt,
+            insert_token_mint_index_stmt,
+        )?;
+
+        Ok(())
     }
 
     /// Insert accounts in batch to reduce network overhead
@@ -548,8 +601,15 @@ impl SimplePostgresClient {
         &mut self,
         account: DbAccountInfo,
     ) -> Result<(), AccountsDbPluginError> {
+        self.queue_secondary_indexes(&account);
         self.pending_account_updates.push(account);
 
+        self.bulk_insert_accounts()?;
+        self.bulk_insert_token_owner_index()?;
+        self.bulk_insert_token_mint_index()
+    }
+
+    fn bulk_insert_accounts(&mut self) -> Result<(), AccountsDbPluginError> {
         if self.pending_account_updates.len() == self.batch_size {
             let mut measure = Measure::start("accountsdb-plugin-postgres-prepare-values");
 
@@ -584,6 +644,7 @@ impl SimplePostgresClient {
                 .query(&client.bulk_account_insert_stmt, &values);
 
             self.pending_account_updates.clear();
+
             if let Err(err) = result {
                 let msg = format!(
                     "Failed to persist the update of account to the PostgreSQL database. Error: {:?}",
@@ -592,6 +653,7 @@ impl SimplePostgresClient {
                 error!("{}", msg);
                 return Err(AccountsDbPluginError::AccountsUpdateError { msg });
             }
+
             measure.stop();
             inc_new_counter_debug!(
                 "accountsdb-plugin-postgres-update-account-us",
@@ -618,12 +680,22 @@ impl SimplePostgresClient {
         let client = self.client.get_mut().unwrap();
         let insert_account_audit_stmt = &client.insert_account_audit_stmt;
         let statement = &client.update_account_stmt;
+        let insert_token_owner_index_stmt = &client.insert_token_owner_index_stmt;
+        let insert_token_mint_index_stmt = &client.insert_token_mint_index_stmt;
         let client = &mut client.client;
 
         for account in self.pending_account_updates.drain(..) {
-            Self::upsert_account_internal(&account, statement, client, insert_account_audit_stmt)?;
+            Self::upsert_account_internal(
+                &account,
+                statement,
+                client,
+                insert_account_audit_stmt,
+                insert_token_owner_index_stmt,
+                insert_token_mint_index_stmt,
+            )?;
         }
 
+        self.clear_buffered_indexes();
         Ok(())
     }
 
@@ -658,6 +730,38 @@ impl SimplePostgresClient {
             None
         };
 
+        let bulk_insert_token_owner_index_stmt = if let Some(true) = config.index_token_owner {
+            let stmt = Self::build_bulk_token_owner_index_insert_statement(&mut client, config)?;
+            Some(stmt)
+        } else {
+            None
+        };
+
+        let bulk_insert_token_mint_index_stmt = if let Some(true) = config.index_token_mint {
+            let stmt = Self::build_bulk_token_mint_index_insert_statement(&mut client, config)?;
+            Some(stmt)
+        } else {
+            None
+        };
+
+        let insert_token_owner_index_stmt = if let Some(true) = config.index_token_owner {
+            Some(Self::build_single_token_owner_index_upsert_statement(
+                &mut client,
+                config,
+            )?)
+        } else {
+            None
+        };
+
+        let insert_token_mint_index_stmt = if let Some(true) = config.index_token_mint {
+            Some(Self::build_single_token_mint_index_upsert_statement(
+                &mut client,
+                config,
+            )?)
+        } else {
+            None
+        };
+
         info!("Created SimplePostgresClient.");
         Ok(Self {
             batch_size,
@@ -671,7 +775,15 @@ impl SimplePostgresClient {
                 update_transaction_log_stmt,
                 update_block_metadata_stmt,
                 insert_account_audit_stmt,
+                insert_token_owner_index_stmt,
+                insert_token_mint_index_stmt,
+                bulk_insert_token_owner_index_stmt,
+                bulk_insert_token_mint_index_stmt,
             }),
+            index_token_owner: config.index_token_owner.unwrap_or_default(),
+            index_token_mint: config.index_token_mint.unwrap_or(false),
+            pending_token_owner_index: Vec::with_capacity(batch_size),
+            pending_token_mint_index: Vec::with_capacity(batch_size),
         })
     }
 }
