@@ -698,6 +698,8 @@ impl SimplePostgresClient {
             )?;
         }
 
+        let mut measure = Measure::start("accountsdb-plugin-postgres-flush-slots-us");
+
         for slot in &self.slots_at_startup {
             Self::upsert_slot_status_internal(
                 *slot,
@@ -707,6 +709,13 @@ impl SimplePostgresClient {
                 insert_slot_stmt,
             )?;
         }
+        measure.stop();
+
+        datapoint_info!(
+            "accountsdb_plugin_notify_account_restore_from_snapshot_summary",
+            ("total_accounts", measure.as_us(), i64),
+            ("skipped_accounts", self.slots_at_startup.len(), i64),
+        );
 
         self.slots_at_startup.clear();
         self.clear_buffered_indexes();
