@@ -713,8 +713,8 @@ impl SimplePostgresClient {
 
         datapoint_info!(
             "accountsdb_plugin_notify_account_restore_from_snapshot_summary",
-            ("total_accounts", measure.as_us(), i64),
-            ("skipped_accounts", self.slots_at_startup.len(), i64),
+            ("flush_slots-us", measure.as_us(), i64),
+            ("flush-slots-counts", self.slots_at_startup.len(), i64),
         );
 
         self.slots_at_startup.clear();
