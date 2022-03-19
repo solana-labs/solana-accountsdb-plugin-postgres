@@ -27,6 +27,7 @@ use {
     solana_metrics::*,
     solana_sdk::timing::AtomicInterval,
     std::{
+        collections::HashSet,
         sync::{
             atomic::{AtomicBool, AtomicUsize, Ordering},
             Arc, Mutex,
@@ -64,7 +65,7 @@ struct PostgresSqlClientWrapper {
 
 pub struct SimplePostgresClient {
     batch_size: usize,
-    slots_at_startup: Vec<u64>,
+    slots_at_startup: HashSet<u64>,
     pending_account_updates: Vec<DbAccountInfo>,
     index_token_owner: bool,
     index_token_mint: bool,
@@ -697,9 +698,9 @@ impl SimplePostgresClient {
             )?;
         }
 
-        for slot in self.slots_at_startup.drain(..) {
+        for slot in &self.slots_at_startup {
             Self::upsert_slot_status_internal(
-                slot,
+                *slot,
                 None,
                 SlotStatus::Rooted,
                 client,
@@ -707,6 +708,7 @@ impl SimplePostgresClient {
             )?;
         }
 
+        self.slots_at_startup.clear();
         self.clear_buffered_indexes();
         Ok(())
     }
@@ -830,7 +832,7 @@ impl SimplePostgresClient {
             index_token_mint: config.index_token_mint.unwrap_or(false),
             pending_token_owner_index: Vec::with_capacity(batch_size),
             pending_token_mint_index: Vec::with_capacity(batch_size),
-            slots_at_startup: Vec::default(),
+            slots_at_startup: HashSet::default(),
         })
     }
 }
@@ -850,7 +852,7 @@ impl PostgresClient for SimplePostgresClient {
         if !is_startup {
             return self.upsert_account(&account);
         }
-        self.slots_at_startup.push(account.slot as u64);
+        self.slots_at_startup.insert(account.slot as u64);
         self.insert_accounts_in_batch(account)
     }
 
