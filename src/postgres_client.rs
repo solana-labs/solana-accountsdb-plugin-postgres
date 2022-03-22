@@ -27,6 +27,7 @@ use {
     solana_metrics::*,
     solana_sdk::timing::AtomicInterval,
     std::{
+        collections::HashSet,
         sync::{
             atomic::{AtomicBool, AtomicUsize, Ordering},
             Arc, Mutex,
@@ -64,6 +65,7 @@ struct PostgresSqlClientWrapper {
 
 pub struct SimplePostgresClient {
     batch_size: usize,
+    slots_at_startup: HashSet<u64>,
     pending_account_updates: Vec<DbAccountInfo>,
     index_token_owner: bool,
     index_token_mint: bool,
@@ -682,6 +684,7 @@ impl SimplePostgresClient {
         let statement = &client.update_account_stmt;
         let insert_token_owner_index_stmt = &client.insert_token_owner_index_stmt;
         let insert_token_mint_index_stmt = &client.insert_token_mint_index_stmt;
+        let insert_slot_stmt = &client.update_slot_without_parent_stmt;
         let client = &mut client.client;
 
         for account in self.pending_account_updates.drain(..) {
@@ -695,7 +698,61 @@ impl SimplePostgresClient {
             )?;
         }
 
+        let mut measure = Measure::start("accountsdb-plugin-postgres-flush-slots-us");
+
+        for slot in &self.slots_at_startup {
+            Self::upsert_slot_status_internal(
+                *slot,
+                None,
+                SlotStatus::Rooted,
+                client,
+                insert_slot_stmt,
+            )?;
+        }
+        measure.stop();
+
+        datapoint_info!(
+            "accountsdb_plugin_notify_account_restore_from_snapshot_summary",
+            ("flush_slots-us", measure.as_us(), i64),
+            ("flush-slots-counts", self.slots_at_startup.len(), i64),
+        );
+
+        self.slots_at_startup.clear();
         self.clear_buffered_indexes();
+        Ok(())
+    }
+
+    fn upsert_slot_status_internal(
+        slot: u64,
+        parent: Option<u64>,
+        status: SlotStatus,
+        client: &mut Client,
+        statement: &Statement,
+    ) -> Result<(), AccountsDbPluginError> {
+        let slot = slot as i64; // postgres only supports i64
+        let parent = parent.map(|parent| parent as i64);
+        let updated_on = Utc::now().naive_utc();
+        let status_str = status.as_str();
+
+        let result = match parent {
+            Some(parent) => client.execute(statement, &[&slot, &parent, &status_str, &updated_on]),
+            None => client.execute(statement, &[&slot, &status_str, &updated_on]),
+        };
+
+        match result {
+            Err(err) => {
+                let msg = format!(
+                    "Failed to persist the update of slot to the PostgreSQL database. Error: {:?}",
+                    err
+                );
+                error!("{:?}", msg);
+                return Err(AccountsDbPluginError::SlotStatusUpdateError { msg });
+            }
+            Ok(rows) => {
+                assert_eq!(1, rows, "Expected one rows to be updated a time");
+            }
+        }
+
         Ok(())
     }
 
@@ -784,6 +841,7 @@ impl SimplePostgresClient {
             index_token_mint: config.index_token_mint.unwrap_or(false),
             pending_token_owner_index: Vec::with_capacity(batch_size),
             pending_token_mint_index: Vec::with_capacity(batch_size),
+            slots_at_startup: HashSet::default(),
         })
     }
 }
@@ -803,6 +861,7 @@ impl PostgresClient for SimplePostgresClient {
         if !is_startup {
             return self.upsert_account(&account);
         }
+        self.slots_at_startup.insert(account.slot as u64);
         self.insert_accounts_in_batch(account)
     }
 
@@ -814,38 +873,14 @@ impl PostgresClient for SimplePostgresClient {
     ) -> Result<(), AccountsDbPluginError> {
         info!("Updating slot {:?} at with status {:?}", slot, status);
 
-        let slot = slot as i64; // postgres only supports i64
-        let parent = parent.map(|parent| parent as i64);
-        let updated_on = Utc::now().naive_utc();
-        let status_str = status.as_str();
         let client = self.client.get_mut().unwrap();
 
-        let result = match parent {
-            Some(parent) => client.client.execute(
-                &client.update_slot_with_parent_stmt,
-                &[&slot, &parent, &status_str, &updated_on],
-            ),
-            None => client.client.execute(
-                &client.update_slot_without_parent_stmt,
-                &[&slot, &status_str, &updated_on],
-            ),
+        let statement = match parent {
+            Some(_) => &client.update_slot_with_parent_stmt,
+            None => &client.update_slot_without_parent_stmt,
         };
 
-        match result {
-            Err(err) => {
-                let msg = format!(
-                    "Failed to persist the update of slot to the PostgreSQL database. Error: {:?}",
-                    err
-                );
-                error!("{:?}", msg);
-                return Err(AccountsDbPluginError::SlotStatusUpdateError { msg });
-            }
-            Ok(rows) => {
-                assert_eq!(1, rows, "Expected one rows to be updated a time");
-            }
-        }
-
-        Ok(())
+        Self::upsert_slot_status_internal(slot, parent, status, &mut client.client, statement)
     }
 
     fn notify_end_of_startup(&mut self) -> Result<(), AccountsDbPluginError> {
