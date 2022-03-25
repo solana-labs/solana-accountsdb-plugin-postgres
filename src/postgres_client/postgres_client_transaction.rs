@@ -2,9 +2,7 @@
 /// database.
 use {
     crate::{
-        geyser_plugin_postgres::{
-            GeyserPluginPostgresConfig, GeyserPluginPostgresError,
-        },
+        geyser_plugin_postgres::{GeyserPluginPostgresConfig, GeyserPluginPostgresError},
         postgres_client::{DbWorkItem, ParallelPostgresClient, SimplePostgresClient},
     },
     chrono::Utc,
@@ -254,11 +252,13 @@ impl From<&v0::Message> for DbTransactionMessageV0 {
     }
 }
 
-impl <'a> From<&v0::LoadedMessage<'a>> for DbLoadedMessageV0 {
+impl<'a> From<&v0::LoadedMessage<'a>> for DbLoadedMessageV0 {
     fn from(message: &v0::LoadedMessage) -> Self {
         Self {
             message: DbTransactionMessageV0::from(&message.message as &v0::Message),
-            loaded_addresses: DbLoadedAddresses::from(&message.loaded_addresses as &LoadedAddresses),
+            loaded_addresses: DbLoadedAddresses::from(
+                &message.loaded_addresses as &LoadedAddresses,
+            ),
         }
     }
 }
@@ -373,7 +373,7 @@ impl From<&TransactionError> for DbTransactionErrorCode {
             }
             TransactionError::WouldExceedAccountDataTotalLimit => {
                 Self::WouldExceedAccountDataTotalLimit
-            }            
+            }
             TransactionError::TooManyAccountLocks => Self::TooManyAccountLocks,
             TransactionError::AddressLookupTableNotFound => Self::AddressLookupTableNotFound,
             TransactionError::InvalidAddressLookupTableOwner => {

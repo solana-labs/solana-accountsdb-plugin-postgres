@@ -21,11 +21,10 @@ use {
     libloading::Library,
     log::*,
     serial_test::serial,
-    solana_geyser_plugin_postgres::{
-        geyser_plugin_postgres::GeyserPluginPostgresConfig,
-        postgres_client::SimplePostgresClient,
-    },
     solana_core::validator::ValidatorConfig,
+    solana_geyser_plugin_postgres::{
+        geyser_plugin_postgres::GeyserPluginPostgresConfig, postgres_client::SimplePostgresClient,
+    },
     solana_local_cluster::{
         cluster::Cluster,
         local_cluster::{ClusterConfig, LocalCluster},

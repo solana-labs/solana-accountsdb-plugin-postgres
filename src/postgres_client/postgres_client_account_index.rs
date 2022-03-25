@@ -4,9 +4,7 @@ use {
         DEFAULT_ACCOUNTS_INSERT_BATCH_SIZE,
     },
     crate::{
-        geyser_plugin_postgres::{
-            GeyserPluginPostgresConfig, GeyserPluginPostgresError,
-        },
+        geyser_plugin_postgres::{GeyserPluginPostgresConfig, GeyserPluginPostgresError},
         inline_spl_token::{self, GenericTokenAccount},
         inline_spl_token_2022,
     },

@@ -1,8 +1,6 @@
 use {
     crate::{
-        geyser_plugin_postgres::{
-            GeyserPluginPostgresConfig, GeyserPluginPostgresError,
-        },
+        geyser_plugin_postgres::{GeyserPluginPostgresConfig, GeyserPluginPostgresError},
         postgres_client::{
             postgres_client_transaction::DbReward, SimplePostgresClient, UpdateBlockMetadataRequest,
         },

@@ -7,9 +7,7 @@ mod postgres_client_transaction;
 /// A concurrent implementation for writing accounts into the PostgreSQL in parallel.
 use {
     crate::{
-        geyser_plugin_postgres::{
-            GeyserPluginPostgresConfig, GeyserPluginPostgresError,
-        },
+        geyser_plugin_postgres::{GeyserPluginPostgresConfig, GeyserPluginPostgresError},
         postgres_client::postgres_client_account_index::TokenSecondaryIndexEntry,
     },
     chrono::Utc,
@@ -225,9 +223,7 @@ pub trait PostgresClient {
 }
 
 impl SimplePostgresClient {
-    pub fn connect_to_db(
-        config: &GeyserPluginPostgresConfig,
-    ) -> Result<Client, GeyserPluginError> {
+    pub fn connect_to_db(config: &GeyserPluginPostgresConfig) -> Result<Client, GeyserPluginError> {
         let port = config.port.unwrap_or(DEFAULT_POSTGRES_PORT);
 
         let connection_str = if let Some(connection_str) = &config.connection_str {
