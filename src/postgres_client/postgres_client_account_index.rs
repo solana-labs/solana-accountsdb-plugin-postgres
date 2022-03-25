@@ -4,15 +4,15 @@ use {
         DEFAULT_ACCOUNTS_INSERT_BATCH_SIZE,
     },
     crate::{
-        accountsdb_plugin_postgres::{
-            AccountsDbPluginPostgresConfig, AccountsDbPluginPostgresError,
+        geyser_plugin_postgres::{
+            GeyserPluginPostgresConfig, GeyserPluginPostgresError,
         },
         inline_spl_token::{self, GenericTokenAccount},
         inline_spl_token_2022,
     },
     log::*,
     postgres::{Client, Statement},
-    solana_accountsdb_plugin_interface::accountsdb_plugin_interface::AccountsDbPluginError,
+    solana_geyser_plugin_interface::geyser_plugin_interface::GeyserPluginError,
     solana_measure::measure::Measure,
     solana_metrics::*,
     solana_sdk::pubkey::Pubkey,
@@ -36,8 +36,8 @@ pub struct TokenSecondaryIndexEntry {
 impl SimplePostgresClient {
     pub fn build_single_token_owner_index_upsert_statement(
         client: &mut Client,
-        config: &AccountsDbPluginPostgresConfig,
-    ) -> Result<Statement, AccountsDbPluginError> {
+        config: &GeyserPluginPostgresConfig,
+    ) -> Result<Statement, GeyserPluginError> {
         const BULK_OWNER_INDEX_INSERT_STATEMENT: &str =
             "INSERT INTO spl_token_owner_index AS owner_index (owner_key, account_key, slot) \
         VALUES ($1, $2, $3) \
@@ -50,8 +50,8 @@ impl SimplePostgresClient {
 
     pub fn build_single_token_mint_index_upsert_statement(
         client: &mut Client,
-        config: &AccountsDbPluginPostgresConfig,
-    ) -> Result<Statement, AccountsDbPluginError> {
+        config: &GeyserPluginPostgresConfig,
+    ) -> Result<Statement, GeyserPluginError> {
         const BULK_MINT_INDEX_INSERT_STATEMENT: &str =
             "INSERT INTO spl_token_mint_index AS mint_index (mint_key, account_key, slot) \
         VALUES ($1, $2, $3) \
@@ -67,8 +67,8 @@ impl SimplePostgresClient {
         client: &mut Client,
         table: &str,
         source_key_name: &str,
-        config: &AccountsDbPluginPostgresConfig,
-    ) -> Result<Statement, AccountsDbPluginError> {
+        config: &GeyserPluginPostgresConfig,
+    ) -> Result<Statement, GeyserPluginError> {
         let batch_size = config
             .batch_size
             .unwrap_or(DEFAULT_ACCOUNTS_INSERT_BATCH_SIZE);
@@ -98,7 +98,7 @@ impl SimplePostgresClient {
 
         match bulk_stmt {
             Err(err) => {
-                return Err(AccountsDbPluginError::Custom(Box::new(AccountsDbPluginPostgresError::DataSchemaError {
+                return Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
                     msg: format!(
                         "Error in preparing for the {} index update PostgreSQL database: {} host: {:?} user: {:?} config: {:?}",
                         table, err, config.host, config.user, config
@@ -112,8 +112,8 @@ impl SimplePostgresClient {
     /// Build the token owner index bulk insert statement
     pub fn build_bulk_token_owner_index_insert_statement(
         client: &mut Client,
-        config: &AccountsDbPluginPostgresConfig,
-    ) -> Result<Statement, AccountsDbPluginError> {
+        config: &GeyserPluginPostgresConfig,
+    ) -> Result<Statement, GeyserPluginError> {
         Self::build_bulk_token_index_insert_statement_common(
             client,
             "spl_token_owner_index",
@@ -125,8 +125,8 @@ impl SimplePostgresClient {
     /// Build the token mint index bulk insert statement.
     pub fn build_bulk_token_mint_index_insert_statement(
         client: &mut Client,
-        config: &AccountsDbPluginPostgresConfig,
-    ) -> Result<Statement, AccountsDbPluginError> {
+        config: &GeyserPluginPostgresConfig,
+    ) -> Result<Statement, GeyserPluginError> {
         Self::build_bulk_token_index_insert_statement_common(
             client,
             "spl_token_mint_index",
@@ -141,9 +141,9 @@ impl SimplePostgresClient {
         client: &mut Client,
         index_entries: &mut Vec<TokenSecondaryIndexEntry>,
         query: &Statement,
-    ) -> Result<(), AccountsDbPluginError> {
+    ) -> Result<(), GeyserPluginError> {
         if index_entries.len() == batch_size {
-            let mut measure = Measure::start("accountsdb-plugin-postgres-prepare-index-values");
+            let mut measure = Measure::start("geyser-plugin-postgres-prepare-index-values");
 
             let mut values: Vec<&(dyn types::ToSql + Sync)> =
                 Vec::with_capacity(batch_size * TOKEN_INDEX_COLUMN_COUNT);
@@ -154,13 +154,13 @@ impl SimplePostgresClient {
             }
             measure.stop();
             inc_new_counter_debug!(
-                "accountsdb-plugin-postgres-prepare-index-values-us",
+                "geyser-plugin-postgres-prepare-index-values-us",
                 measure.as_us() as usize,
                 10000,
                 10000
             );
 
-            let mut measure = Measure::start("accountsdb-plugin-postgres-update-index-account");
+            let mut measure = Measure::start("geyser-plugin-postgres-update-index-account");
             let result = client.query(query, &values);
 
             index_entries.clear();
@@ -171,18 +171,18 @@ impl SimplePostgresClient {
                     err
                 );
                 error!("{}", msg);
-                return Err(AccountsDbPluginError::AccountsUpdateError { msg });
+                return Err(GeyserPluginError::AccountsUpdateError { msg });
             }
 
             measure.stop();
             inc_new_counter_debug!(
-                "accountsdb-plugin-postgres-update-index-us",
+                "geyser-plugin-postgres-update-index-us",
                 measure.as_us() as usize,
                 10000,
                 10000
             );
             inc_new_counter_debug!(
-                "accountsdb-plugin-postgres-update-index-count",
+                "geyser-plugin-postgres-update-index-count",
                 batch_size,
                 10000,
                 10000
@@ -192,7 +192,7 @@ impl SimplePostgresClient {
     }
 
     /// Execute the token owner bulk insert query.
-    pub fn bulk_insert_token_owner_index(&mut self) -> Result<(), AccountsDbPluginError> {
+    pub fn bulk_insert_token_owner_index(&mut self) -> Result<(), GeyserPluginError> {
         let client = self.client.get_mut().unwrap();
         let query = client.bulk_insert_token_owner_index_stmt.as_ref().unwrap();
         Self::bulk_insert_token_index_common(
@@ -204,7 +204,7 @@ impl SimplePostgresClient {
     }
 
     /// Execute the token mint index bulk insert query.
-    pub fn bulk_insert_token_mint_index(&mut self) -> Result<(), AccountsDbPluginError> {
+    pub fn bulk_insert_token_mint_index(&mut self) -> Result<(), GeyserPluginError> {
         let client = self.client.get_mut().unwrap();
         let query = client.bulk_insert_token_mint_index_stmt.as_ref().unwrap();
         Self::bulk_insert_token_index_common(
@@ -286,7 +286,7 @@ impl SimplePostgresClient {
         statement: &Statement,
         token_id: &Pubkey,
         account: &DbAccountInfo,
-    ) -> Result<(), AccountsDbPluginError> {
+    ) -> Result<(), GeyserPluginError> {
         if account.owner() == token_id.as_ref() {
             if let Some(owner_key) = G::unpack_account_owner(account.data()) {
                 let owner_key = owner_key.as_ref().to_vec();
@@ -299,7 +299,7 @@ impl SimplePostgresClient {
                         err
                     );
                     error!("{}", msg);
-                    return Err(AccountsDbPluginError::AccountsUpdateError { msg });
+                    return Err(GeyserPluginError::AccountsUpdateError { msg });
                 }
             }
         }
@@ -313,7 +313,7 @@ impl SimplePostgresClient {
         statement: &Statement,
         token_id: &Pubkey,
         account: &DbAccountInfo,
-    ) -> Result<(), AccountsDbPluginError> {
+    ) -> Result<(), GeyserPluginError> {
         if account.owner() == token_id.as_ref() {
             if let Some(mint_key) = G::unpack_account_mint(account.data()) {
                 let mint_key = mint_key.as_ref().to_vec();
@@ -326,7 +326,7 @@ impl SimplePostgresClient {
                         err
                     );
                     error!("{}", msg);
-                    return Err(AccountsDbPluginError::AccountsUpdateError { msg });
+                    return Err(GeyserPluginError::AccountsUpdateError { msg });
                 }
             }
         }
@@ -339,7 +339,7 @@ impl SimplePostgresClient {
         client: &mut Client,
         statement: &Statement,
         account: &DbAccountInfo,
-    ) -> Result<(), AccountsDbPluginError> {
+    ) -> Result<(), GeyserPluginError> {
         Self::update_token_owner_index_generic::<inline_spl_token::Account>(
             client,
             statement,
@@ -360,7 +360,7 @@ impl SimplePostgresClient {
         client: &mut Client,
         statement: &Statement,
         account: &DbAccountInfo,
-    ) -> Result<(), AccountsDbPluginError> {
+    ) -> Result<(), GeyserPluginError> {
         Self::update_token_mint_index_generic::<inline_spl_token::Account>(
             client,
             statement,

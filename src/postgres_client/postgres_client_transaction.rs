@@ -2,8 +2,8 @@
 /// database.
 use {
     crate::{
-        accountsdb_plugin_postgres::{
-            AccountsDbPluginPostgresConfig, AccountsDbPluginPostgresError,
+        geyser_plugin_postgres::{
+            GeyserPluginPostgresConfig, GeyserPluginPostgresError,
         },
         postgres_client::{DbWorkItem, ParallelPostgresClient, SimplePostgresClient},
     },
@@ -11,8 +11,8 @@ use {
     log::*,
     postgres::{Client, Statement},
     postgres_types::{FromSql, ToSql},
-    solana_accountsdb_plugin_interface::accountsdb_plugin_interface::{
-        AccountsDbPluginError, ReplicaTransactionInfo,
+    solana_geyser_plugin_interface::geyser_plugin_interface::{
+        GeyserPluginError, ReplicaTransactionInfo,
     },
     solana_runtime::bank::RewardType,
     solana_sdk::{
@@ -254,11 +254,11 @@ impl From<&v0::Message> for DbTransactionMessageV0 {
     }
 }
 
-impl From<&v0::LoadedMessage> for DbLoadedMessageV0 {
+impl <'a> From<&v0::LoadedMessage<'a>> for DbLoadedMessageV0 {
     fn from(message: &v0::LoadedMessage) -> Self {
         Self {
-            message: DbTransactionMessageV0::from(&message.message),
-            loaded_addresses: DbLoadedAddresses::from(&message.loaded_addresses),
+            message: DbTransactionMessageV0::from(&message.message as &v0::Message),
+            loaded_addresses: DbLoadedAddresses::from(&message.loaded_addresses as &LoadedAddresses),
         }
     }
 }
@@ -338,6 +338,8 @@ pub enum DbTransactionErrorCode {
     InvalidAddressLookupTableIndex,
     InvalidRentPayingAccount,
     WouldExceedMaxVoteCostLimit,
+    WouldExceedAccountDataBlockLimit,
+    WouldExceedAccountDataTotalLimit,
 }
 
 impl From<&TransactionError> for DbTransactionErrorCode {
@@ -366,9 +368,12 @@ impl From<&TransactionError> for DbTransactionErrorCode {
             TransactionError::WouldExceedMaxBlockCostLimit => Self::WouldExceedMaxBlockCostLimit,
             TransactionError::UnsupportedVersion => Self::UnsupportedVersion,
             TransactionError::InvalidWritableAccount => Self::InvalidWritableAccount,
-            TransactionError::WouldExceedMaxAccountDataCostLimit => {
-                Self::WouldExceedMaxAccountDataCostLimit
+            TransactionError::WouldExceedAccountDataBlockLimit => {
+                Self::WouldExceedAccountDataBlockLimit
             }
+            TransactionError::WouldExceedAccountDataTotalLimit => {
+                Self::WouldExceedAccountDataTotalLimit
+            }            
             TransactionError::TooManyAccountLocks => Self::TooManyAccountLocks,
             TransactionError::AddressLookupTableNotFound => Self::AddressLookupTableNotFound,
             TransactionError::InvalidAddressLookupTableOwner => {
@@ -506,8 +511,8 @@ fn build_db_transaction(slot: u64, transaction_info: &ReplicaTransactionInfo) ->
 impl SimplePostgresClient {
     pub(crate) fn build_transaction_info_upsert_statement(
         client: &mut Client,
-        config: &AccountsDbPluginPostgresConfig,
-    ) -> Result<Statement, AccountsDbPluginError> {
+        config: &GeyserPluginPostgresConfig,
+    ) -> Result<Statement, GeyserPluginError> {
         let stmt = "INSERT INTO transaction AS txn (signature, is_vote, slot, message_type, legacy_message, \
         v0_loaded_message, signatures, message_hash, meta, updated_on) \
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
@@ -524,7 +529,7 @@ impl SimplePostgresClient {
 
         match stmt {
             Err(err) => {
-                return Err(AccountsDbPluginError::Custom(Box::new(AccountsDbPluginPostgresError::DataSchemaError {
+                return Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
                     msg: format!(
                         "Error in preparing for the transaction update PostgreSQL database: ({}) host: {:?} user: {:?} config: {:?}",
                         err, config.host, config.user, config
@@ -538,7 +543,7 @@ impl SimplePostgresClient {
     pub(crate) fn log_transaction_impl(
         &mut self,
         transaction_log_info: LogTransactionRequest,
-    ) -> Result<(), AccountsDbPluginError> {
+    ) -> Result<(), GeyserPluginError> {
         let client = self.client.get_mut().unwrap();
         let statement = &client.update_transaction_log_stmt;
         let client = &mut client.client;
@@ -567,7 +572,7 @@ impl SimplePostgresClient {
                 err
             );
             error!("{}", msg);
-            return Err(AccountsDbPluginError::AccountsUpdateError { msg });
+            return Err(GeyserPluginError::AccountsUpdateError { msg });
         }
 
         Ok(())
@@ -588,14 +593,14 @@ impl ParallelPostgresClient {
         &mut self,
         transaction_info: &ReplicaTransactionInfo,
         slot: u64,
-    ) -> Result<(), AccountsDbPluginError> {
+    ) -> Result<(), GeyserPluginError> {
         let wrk_item = DbWorkItem::LogTransaction(Box::new(Self::build_transaction_request(
             slot,
             transaction_info,
         )));
 
         if let Err(err) = self.sender.send(wrk_item) {
-            return Err(AccountsDbPluginError::SlotStatusUpdateError {
+            return Err(GeyserPluginError::SlotStatusUpdateError {
                 msg: format!("Failed to update the transaction, error: {:?}", err),
             });
         }
