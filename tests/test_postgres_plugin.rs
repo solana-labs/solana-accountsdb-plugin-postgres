@@ -235,6 +235,13 @@ fn test_local_cluster_start_and_exit_with_config(socket_addr_space: SocketAddrSp
 
 #[test]
 #[serial]
+fn test_without_plugin() {
+    let socket_addr_space = SocketAddrSpace::new(true);
+    test_local_cluster_start_and_exit_with_config(socket_addr_space);
+}
+
+#[test]
+#[serial]
 fn test_postgres_plugin() {
     solana_logger::setup_with_default(RUST_LOG_FILTER);
 
@@ -252,7 +259,6 @@ fn test_postgres_plugin() {
     }
 
     let socket_addr_space = SocketAddrSpace::new(true);
-    test_local_cluster_start_and_exit_with_config(socket_addr_space);
 
     // First set up the cluster with 1 node
     let snapshot_interval_slots = 50;
