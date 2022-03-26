@@ -15,8 +15,11 @@ use serde_json::json;
 /// sudo -u postgres createdb -O solana solana
 /// PGPASSWORD=solana psql -U solana -p 5432 -h localhost -w -d solana -f scripts/create_schema.sql
 ///
-/// The test will cover transmitting accounts, transaction and slot and
+/// The test will cover transmitting accounts, transaction and slot,
 /// block metadata.
+///
+/// To clean up the database: run the following, otherwise you may run into duplicate key violations:
+/// PGPASSWORD=solana psql -U solana -p 5432 -h localhost -w -d solana -f scripts/drop_schema.sql
 use {
     libloading::Library,
     log::*,
@@ -121,8 +124,25 @@ fn generate_geyser_plugin_config() -> (TempDir, PathBuf) {
     path.push("accounts_db_plugin.json");
     let mut config_file = File::create(path.clone()).unwrap();
 
-    let mut config_content = json!({
-        "libpath": "libsolana_geyser_plugin_postgres.so",
+    let lib_name = if std::env::consts::OS == "macos" {
+        "libsolana_geyser_plugin_postgres.dylib"
+    } else {
+        "libsolana_geyser_plugin_postgres.so"
+    };
+
+    let mut lib_path = path.clone();
+    info!("zzzzz {:?} {:?}", lib_path, path);
+
+    lib_path.pop();
+    lib_path.pop();
+    lib_path.pop();
+    lib_path.push("target");
+    lib_path.push("debug");
+    lib_path.push(lib_name);
+
+    let lib_path = lib_path.as_os_str().to_str().unwrap();
+    let config_content = json!({
+        "libpath": lib_path,
         "connection_str": "host=localhost user=solana password=solana port=5432",
         "threads": 20,
         "batch_size": 20,
@@ -135,9 +155,7 @@ fn generate_geyser_plugin_config() -> (TempDir, PathBuf) {
         }
     });
 
-    if std::env::consts::OS == "macos" {
-        config_content["libpath"] = json!("libsolana_geyser_plugin_postgres.dylib");
-    }
+    info!("zzzzz {}", config_content);
 
     write!(config_file, "{}", config_content).unwrap();
     (tmp_dir, path)
