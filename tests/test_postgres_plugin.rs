@@ -20,6 +20,8 @@ use serde_json::json;
 ///
 /// To clean up the database: run the following, otherwise you may run into duplicate key violations:
 /// PGPASSWORD=solana psql -U solana -p 5432 -h localhost -w -d solana -f scripts/drop_schema.sql
+///
+/// Before running 'cargo test', please run 'cargo build'
 use {
     libloading::Library,
     log::*,
@@ -124,6 +126,9 @@ fn generate_geyser_plugin_config() -> (TempDir, PathBuf) {
     path.push("accounts_db_plugin.json");
     let mut config_file = File::create(path.clone()).unwrap();
 
+    // Need to specify the absolute path of the dynamic library
+    // as the framework is looking for the library relative to the
+    // config file otherwise.
     let lib_name = if std::env::consts::OS == "macos" {
         "libsolana_geyser_plugin_postgres.dylib"
     } else {
@@ -131,7 +136,6 @@ fn generate_geyser_plugin_config() -> (TempDir, PathBuf) {
     };
 
     let mut lib_path = path.clone();
-    info!("zzzzz {:?} {:?}", lib_path, path);
 
     lib_path.pop();
     lib_path.pop();
@@ -154,8 +158,6 @@ fn generate_geyser_plugin_config() -> (TempDir, PathBuf) {
             "mentions" : ["*"]
         }
     });
-
-    info!("zzzzz {}", config_content);
 
     write!(config_file, "{}", config_content).unwrap();
     (tmp_dir, path)
