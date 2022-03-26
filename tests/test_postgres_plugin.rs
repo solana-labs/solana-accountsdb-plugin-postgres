@@ -56,7 +56,7 @@ use {
 };
 
 const RUST_LOG_FILTER: &str =
-    "info,solana_core::replay_stage=warn,solana_local_cluster=info,local_cluster=info";
+    "info,solana_core::replay_stage=warn,solana_local_cluster=info,local_cluster=info,solana_ledger=info";
 
 fn wait_for_next_snapshot(
     cluster: &LocalCluster,
@@ -295,7 +295,7 @@ fn test_postgres_plugin() {
     assert_eq!(cluster.validators.len(), 1);
     let contact_info = &cluster.entry_point_info;
 
-    info!("Contact info: {:?}", contact_info);
+    info!("Contact info: {:?} {:?}", contact_info, leader_snapshot_test_config.validator_config.enforce_ulimit_nofile);
 
     // Get slot after which this was generated
     let snapshot_archives_dir = &leader_snapshot_test_config
