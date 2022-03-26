@@ -16,6 +16,6 @@ cargo +"$rust_stable" build
 sudo sysctl -w fs.file-max=500000
 sudo sysctl -p
 
-sudo cargo +"$rust_stable" test -- --nocapture
+cargo +"$rust_stable" test -- --nocapture
 
 exit 0
