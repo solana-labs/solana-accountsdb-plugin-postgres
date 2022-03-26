@@ -139,7 +139,7 @@ fn generate_geyser_plugin_config() -> (TempDir, PathBuf) {
         config_content["libpath"] = json!("libsolana_geyser_plugin_postgres.dylib");
     }
 
-    write!(config_file, "{}", config_content.to_string()).unwrap();
+    write!(config_file, "{}", config_content).unwrap();
     (tmp_dir, path)
 }
 

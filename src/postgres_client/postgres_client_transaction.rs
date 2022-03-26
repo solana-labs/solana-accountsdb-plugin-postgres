@@ -620,7 +620,9 @@ pub(crate) mod tests {
             sanitize::Sanitize,
             signature::{Keypair, Signature, Signer},
             system_transaction,
-            transaction::{SanitizedTransaction, Transaction, VersionedTransaction},
+            transaction::{
+                SanitizedTransaction, SimpleAddressLoader, Transaction, VersionedTransaction,
+            },
         },
     };
 
@@ -1041,6 +1043,10 @@ pub(crate) mod tests {
                     commission: Some(11),
                 },
             ]),
+            loaded_addresses: LoadedAddresses {
+                writable: vec![Pubkey::new_unique(), Pubkey::new_unique()],
+                readonly: vec![Pubkey::new_unique(), Pubkey::new_unique()],
+            },
         }
     }
 
@@ -1243,13 +1249,13 @@ pub(crate) mod tests {
 
     #[test]
     fn test_transform_loaded_message_v0() {
-        let message = v0::LoadedMessage {
-            message: build_transaction_message_v0(),
-            loaded_addresses: LoadedAddresses {
+        let message = v0::LoadedMessage::new(
+            build_transaction_message_v0(),
+            LoadedAddresses {
                 writable: vec![Pubkey::new_unique(), Pubkey::new_unique()],
                 readonly: vec![Pubkey::new_unique(), Pubkey::new_unique()],
             },
-        };
+        );
 
         let db_message = DbLoadedMessageV0::from(&message);
         check_loaded_message_v0_equality(&message, &db_message);
@@ -1316,11 +1322,13 @@ pub(crate) mod tests {
 
         let transaction = VersionedTransaction::from(transaction);
 
-        let transaction =
-            SanitizedTransaction::try_create(transaction, message_hash, Some(true), |_| {
-                Err(TransactionError::UnsupportedVersion)
-            })
-            .unwrap();
+        let transaction = SanitizedTransaction::try_create(
+            transaction,
+            message_hash,
+            Some(true),
+            SimpleAddressLoader::Disabled,
+        )
+        .unwrap();
 
         let transaction_status_meta = build_transaction_status_meta();
         let transaction_info = ReplicaTransactionInfo {
@@ -1355,14 +1363,16 @@ pub(crate) mod tests {
 
         transaction.sanitize().unwrap();
 
-        let transaction =
-            SanitizedTransaction::try_create(transaction, message_hash, Some(true), |_message| {
-                Ok(LoadedAddresses {
-                    writable: vec![Pubkey::new_unique(), Pubkey::new_unique()],
-                    readonly: vec![Pubkey::new_unique(), Pubkey::new_unique()],
-                })
-            })
-            .unwrap();
+        let transaction = SanitizedTransaction::try_create(
+            transaction,
+            message_hash,
+            Some(true),
+            SimpleAddressLoader::Enabled(LoadedAddresses {
+                writable: vec![Pubkey::new_unique(), Pubkey::new_unique()],
+                readonly: vec![Pubkey::new_unique(), Pubkey::new_unique()],
+            }),
+        )
+        .unwrap();
 
         let transaction_status_meta = build_transaction_status_meta();
         let transaction_info = ReplicaTransactionInfo {
