@@ -1,9 +1,9 @@
 [package]
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 edition = "2021"
-name = "solana-accountsdb-plugin-postgres"
+name = "solana-geyser-plugin-postgres"
 description = "The Solana AccountsDb plugin for PostgreSQL database."
-version = "1.9.7"
+version = "1.10.3"
 repository = "https://github.com/solana-labs/solana"
 license = "Apache-2.0"
 homepage = "https://solana.com/"
@@ -25,13 +25,13 @@ postgres-openssl = { version = "0.5.0"}
 serde = "1.0.133"
 serde_derive = "1.0.103"
 serde_json = "1.0.74"
-solana-accountsdb-plugin-interface = { version = "=1.9.7" }
-solana-logger = { version = "=1.9.7" }
-solana-measure = { version = "=1.9.7" }
-solana-metrics = { version = "=1.9.7" }
-solana-runtime = { version = "=1.9.7" }
-solana-sdk = { version = "=1.9.7" }
-solana-transaction-status = { version = "=1.9.7" }
+solana-geyser-plugin-interface = { version = "=1.10.3" }
+solana-logger = { version = "=1.10.3" }
+solana-measure = { version = "=1.10.3" }
+solana-metrics = { version = "=1.10.3" }
+solana-runtime = { version = "=1.10.3" }
+solana-sdk = { version = "=1.10.3" }
+solana-transaction-status = { version = "=1.10.3" }
 thiserror = "1.0.30"
 tokio-postgres = "0.7.4"
 
@@ -39,11 +39,11 @@ tokio-postgres = "0.7.4"
 libc = "0.2.112"
 libloading = "0.7.2"
 serial_test = "0.5.1"
-solana-account-decoder = { version = "=1.9.7" }
-solana-core = { version = "=1.9.7" }
-solana-local-cluster = { version = "=1.9.7" }
-solana-net-utils = { version = "=1.9.7" }
-solana-streamer = { version = "=1.9.7" }
+solana-account-decoder = { version = "=1.10.3" }
+solana-core = { version = "=1.10.3" }
+solana-local-cluster = { version = "=1.10.3" }
+solana-net-utils = { version = "=1.10.3" }
+solana-streamer = { version = "=1.10.3" }
 tempfile = "3.2.0"
 
 [package.metadata.docs.rs]

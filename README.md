@@ -1,6 +1,6 @@
-The `solana-accountsdb-plugin-postgres` crate implements a plugin storing
+The `solana-geyser-plugin-postgres` crate implements a plugin storing
 account data to a PostgreSQL database to illustrate how a plugin can be
-developed to work with Solana validators using the [Plugin Framework](https://docs.solana.com/developing/plugins/accountsdb_plugin).
+developed to work with Solana validators using the [Plugin Framework](https://docs.solana.com/developing/plugins/geyser_plugin).
 
 ### Configuration File Format
 
@@ -9,7 +9,7 @@ configuration file looks like the following:
 
 ```
 {
-	"libpath": "/solana/target/release/libsolana_accountsdb_plugin_postgres.so",
+	"libpath": "/solana/target/release/libsolana_geyser_plugin_postgres.so",
 	"host": "postgres-server",
 	"user": "solana",
 	"port": 5433,
@@ -196,7 +196,7 @@ Use the scripts/create_schema.sql
 psql -U solana -p 5433 -h 10.138.0.9 -w -d solana -f scripts/create_schema.sql
 ```
 
-After this, start the validator with the plugin by using the `--accountsdb-plugin-config`
+After this, start the validator with the plugin by using the `--geyser-plugin-config`
 argument mentioned above.
 
 #### Destroy the Schema Objects

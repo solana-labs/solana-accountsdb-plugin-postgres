@@ -1,8 +1,6 @@
 use {
     crate::{
-        accountsdb_plugin_postgres::{
-            AccountsDbPluginPostgresConfig, AccountsDbPluginPostgresError,
-        },
+        geyser_plugin_postgres::{GeyserPluginPostgresConfig, GeyserPluginPostgresError},
         postgres_client::{
             postgres_client_transaction::DbReward, SimplePostgresClient, UpdateBlockMetadataRequest,
         },
@@ -10,8 +8,8 @@ use {
     chrono::Utc,
     log::*,
     postgres::{Client, Statement},
-    solana_accountsdb_plugin_interface::accountsdb_plugin_interface::{
-        AccountsDbPluginError, ReplicaBlockInfo,
+    solana_geyser_plugin_interface::geyser_plugin_interface::{
+        GeyserPluginError, ReplicaBlockInfo,
     },
 };
 
@@ -41,8 +39,8 @@ impl<'a> From<&ReplicaBlockInfo<'a>> for DbBlockInfo {
 impl SimplePostgresClient {
     pub(crate) fn build_block_metadata_upsert_statement(
         client: &mut Client,
-        config: &AccountsDbPluginPostgresConfig,
-    ) -> Result<Statement, AccountsDbPluginError> {
+        config: &GeyserPluginPostgresConfig,
+    ) -> Result<Statement, GeyserPluginError> {
         let stmt =
             "INSERT INTO block (slot, blockhash, rewards, block_time, block_height, updated_on) \
         VALUES ($1, $2, $3, $4, $5, $6)";
@@ -51,7 +49,7 @@ impl SimplePostgresClient {
 
         match stmt {
             Err(err) => {
-                return Err(AccountsDbPluginError::Custom(Box::new(AccountsDbPluginPostgresError::DataSchemaError {
+                return Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
                     msg: format!(
                         "Error in preparing for the block metadata update PostgreSQL database: ({}) host: {:?} user: {:?} config: {:?}",
                         err, config.host, config.user, config
@@ -65,7 +63,7 @@ impl SimplePostgresClient {
     pub(crate) fn update_block_metadata_impl(
         &mut self,
         block_info: UpdateBlockMetadataRequest,
-    ) -> Result<(), AccountsDbPluginError> {
+    ) -> Result<(), GeyserPluginError> {
         let client = self.client.get_mut().unwrap();
         let statement = &client.update_block_metadata_stmt;
         let client = &mut client.client;
@@ -89,7 +87,7 @@ impl SimplePostgresClient {
                 "Failed to persist the update of block metadata to the PostgreSQL database. Error: {:?}",
                 err);
             error!("{}", msg);
-            return Err(AccountsDbPluginError::AccountsUpdateError { msg });
+            return Err(GeyserPluginError::AccountsUpdateError { msg });
         }
 
         Ok(())

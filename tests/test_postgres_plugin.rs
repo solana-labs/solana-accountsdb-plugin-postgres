@@ -15,17 +15,21 @@ use serde_json::json;
 /// sudo -u postgres createdb -O solana solana
 /// PGPASSWORD=solana psql -U solana -p 5432 -h localhost -w -d solana -f scripts/create_schema.sql
 ///
-/// The test will cover transmitting accounts, transaction and slot and
+/// The test will cover transmitting accounts, transaction and slot,
 /// block metadata.
+///
+/// To clean up the database: run the following, otherwise you may run into duplicate key violations:
+/// PGPASSWORD=solana psql -U solana -p 5432 -h localhost -w -d solana -f scripts/drop_schema.sql
+///
+/// Before running 'cargo test', please run 'cargo build'
 use {
     libloading::Library,
     log::*,
     serial_test::serial,
-    solana_accountsdb_plugin_postgres::{
-        accountsdb_plugin_postgres::AccountsDbPluginPostgresConfig,
-        postgres_client::SimplePostgresClient,
-    },
     solana_core::validator::ValidatorConfig,
+    solana_geyser_plugin_postgres::{
+        geyser_plugin_postgres::GeyserPluginPostgresConfig, postgres_client::SimplePostgresClient,
+    },
     solana_local_cluster::{
         cluster::Cluster,
         local_cluster::{ClusterConfig, LocalCluster},
@@ -52,7 +56,7 @@ use {
 };
 
 const RUST_LOG_FILTER: &str =
-    "info,solana_core::replay_stage=warn,solana_local_cluster=info,local_cluster=info";
+    "info,solana_core::replay_stage=warn,solana_local_cluster=info,local_cluster=info,solana_ledger=info";
 
 fn wait_for_next_snapshot(
     cluster: &LocalCluster,
@@ -116,14 +120,33 @@ fn generate_account_paths(num_account_paths: usize) -> (Vec<TempDir>, Vec<PathBu
     (account_storage_dirs, account_storage_paths)
 }
 
-fn generate_accountsdb_plugin_config() -> (TempDir, PathBuf) {
+fn generate_geyser_plugin_config() -> (TempDir, PathBuf) {
     let tmp_dir = tempfile::tempdir_in(farf_dir()).unwrap();
     let mut path = tmp_dir.path().to_path_buf();
     path.push("accounts_db_plugin.json");
     let mut config_file = File::create(path.clone()).unwrap();
 
-    let mut config_content = json!({
-        "libpath": "libsolana_accountsdb_plugin_postgres.so",
+    // Need to specify the absolute path of the dynamic library
+    // as the framework is looking for the library relative to the
+    // config file otherwise.
+    let lib_name = if std::env::consts::OS == "macos" {
+        "libsolana_geyser_plugin_postgres.dylib"
+    } else {
+        "libsolana_geyser_plugin_postgres.so"
+    };
+
+    let mut lib_path = path.clone();
+
+    lib_path.pop();
+    lib_path.pop();
+    lib_path.pop();
+    lib_path.push("target");
+    lib_path.push("debug");
+    lib_path.push(lib_name);
+
+    let lib_path = lib_path.as_os_str().to_str().unwrap();
+    let config_content = json!({
+        "libpath": lib_path,
         "connection_str": "host=localhost user=solana password=solana port=5432",
         "threads": 20,
         "batch_size": 20,
@@ -136,11 +159,7 @@ fn generate_accountsdb_plugin_config() -> (TempDir, PathBuf) {
         }
     });
 
-    if std::env::consts::OS == "macos" {
-        config_content["libpath"] = json!("libsolana_accountsdb_plugin_postgres.dylib");
-    }
-
-    write!(config_file, "{}", config_content.to_string()).unwrap();
+    write!(config_file, "{}", config_content).unwrap();
     (tmp_dir, path)
 }
 
@@ -171,9 +190,9 @@ fn setup_snapshot_validator_config(
     // Create the account paths
     let (account_storage_dirs, account_storage_paths) = generate_account_paths(num_account_paths);
 
-    let (plugin_config_dir, path) = generate_accountsdb_plugin_config();
+    let (plugin_config_dir, path) = generate_geyser_plugin_config();
 
-    let accountsdb_plugin_config_files = Some(vec![path]);
+    let geyser_plugin_config_files = Some(vec![path]);
 
     // Create the validator config
     let validator_config = ValidatorConfig {
@@ -181,7 +200,7 @@ fn setup_snapshot_validator_config(
         account_paths: account_storage_paths,
         accounts_db_caching_enabled: true,
         accounts_hash_interval_slots: snapshot_interval_slots,
-        accountsdb_plugin_config_files,
+        geyser_plugin_config_files,
         enforce_ulimit_nofile: false,
         ..ValidatorConfig::default()
     };
@@ -216,13 +235,20 @@ fn test_local_cluster_start_and_exit_with_config(socket_addr_space: SocketAddrSp
 
 #[test]
 #[serial]
+fn test_without_plugin() {
+    let socket_addr_space = SocketAddrSpace::new(true);
+    test_local_cluster_start_and_exit_with_config(socket_addr_space);
+}
+
+#[test]
+#[serial]
 fn test_postgres_plugin() {
     solana_logger::setup_with_default(RUST_LOG_FILTER);
 
     unsafe {
         let filename = match std::env::consts::OS {
-            "macos" => "libsolana_accountsdb_plugin_postgres.dylib",
-            _ => "libsolana_accountsdb_plugin_postgres.so",
+            "macos" => "libsolana_geyser_plugin_postgres.dylib",
+            _ => "libsolana_geyser_plugin_postgres.so",
         };
 
         let lib = Library::new(filename);
@@ -233,7 +259,6 @@ fn test_postgres_plugin() {
     }
 
     let socket_addr_space = SocketAddrSpace::new(true);
-    test_local_cluster_start_and_exit_with_config(socket_addr_space);
 
     // First set up the cluster with 1 node
     let snapshot_interval_slots = 50;
@@ -245,14 +270,14 @@ fn test_postgres_plugin() {
     let mut file = File::open(
         &leader_snapshot_test_config
             .validator_config
-            .accountsdb_plugin_config_files
+            .geyser_plugin_config_files
             .as_ref()
             .unwrap()[0],
     )
     .unwrap();
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
-    let plugin_config: AccountsDbPluginPostgresConfig = serde_json::from_str(&contents).unwrap();
+    let plugin_config: GeyserPluginPostgresConfig = serde_json::from_str(&contents).unwrap();
 
     let result = SimplePostgresClient::connect_to_db(&plugin_config);
     if result.is_err() {
@@ -276,7 +301,13 @@ fn test_postgres_plugin() {
     assert_eq!(cluster.validators.len(), 1);
     let contact_info = &cluster.entry_point_info;
 
-    info!("Contact info: {:?}", contact_info);
+    info!(
+        "Contact info: {:?} {:?}",
+        contact_info,
+        leader_snapshot_test_config
+            .validator_config
+            .enforce_ulimit_nofile
+    );
 
     // Get slot after which this was generated
     let snapshot_archives_dir = &leader_snapshot_test_config
