@@ -295,7 +295,13 @@ fn test_postgres_plugin() {
     assert_eq!(cluster.validators.len(), 1);
     let contact_info = &cluster.entry_point_info;
 
-    info!("Contact info: {:?} {:?}", contact_info, leader_snapshot_test_config.validator_config.enforce_ulimit_nofile);
+    info!(
+        "Contact info: {:?} {:?}",
+        contact_info,
+        leader_snapshot_test_config
+            .validator_config
+            .enforce_ulimit_nofile
+    );
 
     // Get slot after which this was generated
     let snapshot_archives_dir = &leader_snapshot_test_config
