@@ -192,6 +192,9 @@ impl SimplePostgresClient {
     /// Execute the token owner bulk insert query.
     pub fn bulk_insert_token_owner_index(&mut self) -> Result<(), GeyserPluginError> {
         let client = self.client.get_mut().unwrap();
+        if client.bulk_insert_token_owner_index_stmt.is_none() {
+            return Ok(());
+        }
         let query = client.bulk_insert_token_owner_index_stmt.as_ref().unwrap();
         Self::bulk_insert_token_index_common(
             self.batch_size,
@@ -204,6 +207,9 @@ impl SimplePostgresClient {
     /// Execute the token mint index bulk insert query.
     pub fn bulk_insert_token_mint_index(&mut self) -> Result<(), GeyserPluginError> {
         let client = self.client.get_mut().unwrap();
+        if client.bulk_insert_token_mint_index_stmt.is_none() {
+            return Ok(());
+        }
         let query = client.bulk_insert_token_mint_index_stmt.as_ref().unwrap();
         Self::bulk_insert_token_index_common(
             self.batch_size,
