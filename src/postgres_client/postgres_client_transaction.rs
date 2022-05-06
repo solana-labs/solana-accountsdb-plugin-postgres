@@ -146,6 +146,8 @@ pub struct DbTransaction {
     pub meta: DbTransactionStatusMeta,
     pub signatures: Vec<Vec<u8>>,
     /// This can be used to tell the order of transaction within a block
+    /// Given a slot, the transaction with a smaller write_version appears
+    /// before transactions with higher write_versions in a shred.
     pub write_version: i64,
 }
 
@@ -477,7 +479,11 @@ impl From<&TransactionStatusMeta> for DbTransactionStatusMeta {
     }
 }
 
-fn build_db_transaction(slot: u64, transaction_info: &ReplicaTransactionInfo, transaction_write_version: u64) -> DbTransaction {
+fn build_db_transaction(
+    slot: u64,
+    transaction_info: &ReplicaTransactionInfo,
+    transaction_write_version: u64,
+) -> DbTransaction {
     DbTransaction {
         signature: transaction_info.signature.as_ref().to_vec(),
         is_vote: transaction_info.is_vote,
@@ -589,10 +595,14 @@ impl ParallelPostgresClient {
     fn build_transaction_request(
         slot: u64,
         transaction_info: &ReplicaTransactionInfo,
-        transaction_write_version: u64
+        transaction_write_version: u64,
     ) -> LogTransactionRequest {
         LogTransactionRequest {
-            transaction_info: build_db_transaction(slot, transaction_info, transaction_write_version),
+            transaction_info: build_db_transaction(
+                slot,
+                transaction_info,
+                transaction_write_version,
+            ),
         }
     }
 
@@ -601,11 +611,12 @@ impl ParallelPostgresClient {
         transaction_info: &ReplicaTransactionInfo,
         slot: u64,
     ) -> Result<(), GeyserPluginError> {
-        self.transaction_write_version.fetch_add(1, Ordering::Relaxed);
+        self.transaction_write_version
+            .fetch_add(1, Ordering::Relaxed);
         let wrk_item = DbWorkItem::LogTransaction(Box::new(Self::build_transaction_request(
             slot,
             transaction_info,
-            self.transaction_write_version.load(Ordering::Relaxed)
+            self.transaction_write_version.load(Ordering::Relaxed),
         )));
 
         if let Err(err) = self.sender.send(wrk_item) {
