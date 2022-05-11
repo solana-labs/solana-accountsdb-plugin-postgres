@@ -162,6 +162,7 @@ CREATE TABLE transaction (
     signatures BYTEA[],
     message_hash BYTEA,
     meta "TransactionStatusMeta",
+    write_version BIGINT,
     updated_on TIMESTAMP NOT NULL,
     CONSTRAINT transaction_pk PRIMARY KEY (slot, signature)
 );
