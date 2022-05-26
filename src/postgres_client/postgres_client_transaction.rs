@@ -572,8 +572,8 @@ impl SimplePostgresClient {
         config: &GeyserPluginPostgresConfig,
     ) -> Result<Statement, GeyserPluginError> {
         let stmt = "INSERT INTO transaction AS txn (signature, is_vote, slot, message_type, legacy_message, \
-        v0_loaded_message, signatures, message_hash, meta, write_version, updated_on) \
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) \
+        v0_loaded_message, signatures, message_hash, meta, write_version, index, updated_on) \
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) \
         ON CONFLICT (slot, signature) DO UPDATE SET is_vote=excluded.is_vote, \
         message_type=excluded.message_type, \
         legacy_message=excluded.legacy_message, \
@@ -613,6 +613,7 @@ impl SimplePostgresClient {
             statement,
             &[
                 &transaction_info.signature,
+                &transaction_info.index,
                 &transaction_info.is_vote,
                 &transaction_info.slot,
                 &transaction_info.message_type,
