@@ -10,7 +10,7 @@ use {
     postgres::{Client, Statement},
     postgres_types::{FromSql, ToSql},
     solana_geyser_plugin_interface::geyser_plugin_interface::{
-        GeyserPluginError, ReplicaTransactionInfo,
+        GeyserPluginError, ReplicaTransactionInfo, ReplicaTransactionInfoV2,
     },
     solana_runtime::bank::RewardType,
     solana_sdk::{
@@ -149,6 +149,7 @@ pub struct DbTransaction {
     /// Given a slot, the transaction with a smaller write_version appears
     /// before transactions with higher write_versions in a shred.
     pub write_version: i64,
+    pub index: i64,
 }
 
 pub struct LogTransactionRequest {
@@ -521,6 +522,47 @@ fn build_db_transaction(
             .to_vec(),
         meta: DbTransactionStatusMeta::from(transaction_info.transaction_status_meta),
         write_version: transaction_write_version as i64,
+        index: 0,
+    }
+}
+
+fn build_db_transaction_v2(
+    slot: u64,
+    transaction_info: &ReplicaTransactionInfoV2,
+    transaction_write_version: u64,
+) -> DbTransaction {
+    DbTransaction {
+        signature: transaction_info.signature.as_ref().to_vec(),
+        is_vote: transaction_info.is_vote,
+        slot: slot as i64,
+        message_type: match transaction_info.transaction.message() {
+            SanitizedMessage::Legacy(_) => 0,
+            SanitizedMessage::V0(_) => 1,
+        },
+        legacy_message: match transaction_info.transaction.message() {
+            SanitizedMessage::Legacy(legacy_message) => {
+                Some(DbTransactionMessage::from(legacy_message))
+            }
+            _ => None,
+        },
+        v0_loaded_message: match transaction_info.transaction.message() {
+            SanitizedMessage::V0(loaded_message) => Some(DbLoadedMessageV0::from(loaded_message)),
+            _ => None,
+        },
+        signatures: transaction_info
+            .transaction
+            .signatures()
+            .iter()
+            .map(|signature| signature.as_ref().to_vec())
+            .collect(),
+        message_hash: transaction_info
+            .transaction
+            .message_hash()
+            .as_ref()
+            .to_vec(),
+        meta: DbTransactionStatusMeta::from(transaction_info.transaction_status_meta),
+        write_version: transaction_write_version as i64,
+        index: transaction_info.index as i64,
     }
 }
 
@@ -612,6 +654,20 @@ impl ParallelPostgresClient {
         }
     }
 
+    fn build_transaction_request_v2(
+        slot: u64,
+        transaction_info: &ReplicaTransactionInfoV2,
+        transaction_write_version: u64,
+    ) -> LogTransactionRequest {
+        LogTransactionRequest {
+            transaction_info: build_db_transaction_v2(
+                slot,
+                transaction_info,
+                transaction_write_version,
+            ),
+        }
+    }
+
     pub fn log_transaction_info(
         &mut self,
         transaction_info: &ReplicaTransactionInfo,
@@ -620,6 +676,27 @@ impl ParallelPostgresClient {
         self.transaction_write_version
             .fetch_add(1, Ordering::Relaxed);
         let wrk_item = DbWorkItem::LogTransaction(Box::new(Self::build_transaction_request(
+            slot,
+            transaction_info,
+            self.transaction_write_version.load(Ordering::Relaxed),
+        )));
+
+        if let Err(err) = self.sender.send(wrk_item) {
+            return Err(GeyserPluginError::SlotStatusUpdateError {
+                msg: format!("Failed to update the transaction, error: {:?}", err),
+            });
+        }
+        Ok(())
+    }
+
+    pub fn log_transaction_info_v2(
+        &mut self,
+        transaction_info: &ReplicaTransactionInfoV2,
+        slot: u64,
+    ) -> Result<(), GeyserPluginError> {
+        self.transaction_write_version
+            .fetch_add(1, Ordering::Relaxed);
+        let wrk_item = DbWorkItem::LogTransaction(Box::new(Self::build_transaction_request_v2(
             slot,
             transaction_info,
             self.transaction_write_version.load(Ordering::Relaxed),
