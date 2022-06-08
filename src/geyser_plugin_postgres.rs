@@ -81,6 +81,10 @@ pub struct GeyserPluginPostgresConfig {
 
     /// Controls whetherf to index the token mints. The default is false
     pub index_token_mint: Option<bool>,
+
+    /// Controls if this plugin can read the database on_load() and find slot below that one everything should be in database
+    #[serde(default)]
+    pub batch_optimize_by_skiping_old_slots: bool,
 }
 
 #[derive(Error, Debug)]
