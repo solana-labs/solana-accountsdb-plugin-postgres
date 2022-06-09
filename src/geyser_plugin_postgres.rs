@@ -24,6 +24,7 @@ pub struct GeyserPluginPostgres {
     client: Option<ParallelPostgresClient>,
     accounts_selector: Option<AccountsSelector>,
     transaction_selector: Option<TransactionSelector>,
+    batch_optimize_by_skiping_older_slots: Option<u64>,
 }
 
 impl std::fmt::Debug for GeyserPluginPostgres {
@@ -178,22 +179,20 @@ impl GeyserPlugin for GeyserPluginPostgres {
         self.accounts_selector = Some(Self::create_accounts_selector_from_config(&result));
         self.transaction_selector = Some(Self::create_transaction_selector_from_config(&result));
 
-        let result: serde_json::Result<GeyserPluginPostgresConfig> =
-            serde_json::from_str(&contents);
-        match result {
-            Err(err) => {
-                return Err(GeyserPluginError::ConfigFileReadError {
+        let config: GeyserPluginPostgresConfig =
+            serde_json::from_str(&contents).map_err(|err| {
+                GeyserPluginError::ConfigFileReadError {
                     msg: format!(
                         "The config file is not in the JSON format expected: {:?}",
                         err
                     ),
-                })
-            }
-            Ok(config) => {
-                let client = PostgresClientBuilder::build_pararallel_postgres_client(&config)?;
-                self.client = Some(client);
-            }
-        }
+                }
+            })?;
+
+        let (client, batch_optimize_by_skiping_older_slots) =
+            PostgresClientBuilder::build_pararallel_postgres_client(&config)?;
+        self.client = Some(client);
+        self.batch_optimize_by_skiping_older_slots = batch_optimize_by_skiping_older_slots;
 
         Ok(())
     }
@@ -215,6 +214,17 @@ impl GeyserPlugin for GeyserPluginPostgres {
         slot: u64,
         is_startup: bool,
     ) -> Result<()> {
+        // skip updating account on startup of batch_optimize_by_skiping_older_slots
+        // is configured
+        if is_startup
+            && self
+                .batch_optimize_by_skiping_older_slots
+                .map(|slot_limit| slot < slot_limit)
+                .unwrap_or(false)
+        {
+            return Ok(());
+        }
+
         let mut measure_all = Measure::start("geyser-plugin-postgres-update-account-main");
         match account {
             ReplicaAccountInfoVersions::V0_0_1(account) => {

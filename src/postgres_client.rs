@@ -67,8 +67,6 @@ pub struct SimplePostgresClient {
     pending_account_updates: Vec<DbAccountInfo>,
     index_token_owner: bool,
     index_token_mint: bool,
-    /// skip inserting account info with lower value into DB
-    batch_optimize_by_skiping_older_slots: Option<u64>,
     pending_token_owner_index: Vec<TokenSecondaryIndexEntry>,
     pending_token_mint_index: Vec<TokenSecondaryIndexEntry>,
     client: Mutex<PostgresSqlClientWrapper>,
@@ -754,10 +752,7 @@ impl SimplePostgresClient {
         Ok(())
     }
 
-    pub fn new(
-        config: &GeyserPluginPostgresConfig,
-        batch_optimize_by_skiping_older_slots: Option<u64>,
-    ) -> Result<Self, GeyserPluginError> {
+    pub fn new(config: &GeyserPluginPostgresConfig) -> Result<Self, GeyserPluginError> {
         info!("Creating SimplePostgresClient...");
         let mut client = Self::connect_to_db(config)?;
         let bulk_account_insert_stmt =
@@ -843,7 +838,6 @@ impl SimplePostgresClient {
             pending_token_owner_index: Vec::with_capacity(batch_size),
             pending_token_mint_index: Vec::with_capacity(batch_size),
             slots_at_startup: HashSet::default(),
-            batch_optimize_by_skiping_older_slots,
         })
     }
 
@@ -888,22 +882,8 @@ impl PostgresClient for SimplePostgresClient {
             return self.upsert_account(&account);
         }
 
-        // if batch_optimize_by_skiping_old_slots is enabled skip inserting
-        // all slot below some limit
-        let insert_in_batch_this_account = self
-            .batch_optimize_by_skiping_older_slots
-            .map(|slot_limit| {
-                let account_slot = account.slot as u64;
-                account_slot >= slot_limit
-            })
-            .unwrap_or(true);
-
-        if insert_in_batch_this_account {
-            self.slots_at_startup.insert(account.slot as u64);
-            self.insert_accounts_in_batch(account)
-        } else {
-            Ok(())
-        }
+        self.slots_at_startup.insert(account.slot as u64);
+        self.insert_accounts_in_batch(account)
     }
 
     fn update_slot_status(
@@ -967,11 +947,8 @@ enum DbWorkItem {
 }
 
 impl PostgresClientWorker {
-    fn new(
-        config: GeyserPluginPostgresConfig,
-        batch_optimize_by_skiping_older_slots: Option<u64>,
-    ) -> Result<Self, GeyserPluginError> {
-        let result = SimplePostgresClient::new(&config, batch_optimize_by_skiping_older_slots);
+    fn new(config: GeyserPluginPostgresConfig) -> Result<Self, GeyserPluginError> {
+        let result = SimplePostgresClient::new(&config);
         match result {
             Ok(client) => Ok(PostgresClientWorker {
                 client,
@@ -1084,10 +1061,7 @@ pub struct ParallelPostgresClient {
 }
 
 impl ParallelPostgresClient {
-    pub fn new(
-        config: &GeyserPluginPostgresConfig,
-        batch_optimize_by_skiping_older_slots: Option<u64>,
-    ) -> Result<Self, GeyserPluginError> {
+    pub fn new(config: &GeyserPluginPostgresConfig) -> Result<Self, GeyserPluginError> {
         info!("Creating ParallelPostgresClient...");
         let (sender, receiver) = bounded(MAX_ASYNC_REQUESTS);
         let exit_worker = Arc::new(AtomicBool::new(false));
@@ -1110,8 +1084,7 @@ impl ParallelPostgresClient {
                         .panic_on_db_errors
                         .as_ref()
                         .unwrap_or(&DEFAULT_PANIC_ON_DB_ERROR);
-                    let result =
-                        PostgresClientWorker::new(config, batch_optimize_by_skiping_older_slots);
+                    let result = PostgresClientWorker::new(config);
 
                     match result {
                         Ok(mut worker) => {
@@ -1289,12 +1262,12 @@ pub struct PostgresClientBuilder {}
 impl PostgresClientBuilder {
     pub fn build_pararallel_postgres_client(
         config: &GeyserPluginPostgresConfig,
-    ) -> Result<ParallelPostgresClient, GeyserPluginError> {
+    ) -> Result<(ParallelPostgresClient, Option<u64>), GeyserPluginError> {
         let batch_optimize_by_skiping_older_slots = match config.batch_optimize_by_skiping_old_slots
         {
             true => {
                 //one request client
-                let mut on_load_client = SimplePostgresClient::new(config, None)?;
+                let mut on_load_client = SimplePostgresClient::new(config)?;
 
                 let max_queue_size = u64::try_from(MAX_ASYNC_REQUESTS).unwrap();
 
@@ -1312,6 +1285,6 @@ impl PostgresClientBuilder {
             false => None,
         };
 
-        ParallelPostgresClient::new(config, batch_optimize_by_skiping_older_slots)
+        ParallelPostgresClient::new(config).map(|v| (v, batch_optimize_by_skiping_older_slots))
     }
 }
