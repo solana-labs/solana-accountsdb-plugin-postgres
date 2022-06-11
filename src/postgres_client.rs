@@ -19,7 +19,7 @@ use {
     postgres_client_transaction::LogTransactionRequest,
     postgres_openssl::MakeTlsConnector,
     solana_geyser_plugin_interface::geyser_plugin_interface::{
-        GeyserPluginError, ReplicaAccountInfo, ReplicaBlockInfo, SlotStatus,
+        GeyserPluginError, ReplicaAccountInfoV2, ReplicaBlockInfo, SlotStatus,
     },
     solana_measure::measure::Measure,
     solana_metrics::*,
@@ -161,7 +161,7 @@ impl ReadableAccountInfo for DbAccountInfo {
     }
 }
 
-impl<'a> ReadableAccountInfo for ReplicaAccountInfo<'a> {
+impl<'a> ReadableAccountInfo for ReplicaAccountInfoV2<'a> {
     fn pubkey(&self) -> &[u8] {
         self.pubkey
     }
@@ -1119,7 +1119,7 @@ impl ParallelPostgresClient {
 
     pub fn update_account(
         &mut self,
-        account: &ReplicaAccountInfo,
+        account: &ReplicaAccountInfoV2,
         slot: u64,
         is_startup: bool,
     ) -> Result<(), GeyserPluginError> {
