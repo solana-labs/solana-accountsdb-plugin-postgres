@@ -393,7 +393,9 @@ impl From<&TransactionError> for DbTransactionErrorCode {
             TransactionError::InvalidRentPayingAccount => Self::InvalidRentPayingAccount,
             TransactionError::WouldExceedMaxVoteCostLimit => Self::WouldExceedMaxVoteCostLimit,
             TransactionError::DuplicateInstruction(_) => Self::DuplicateInstruction,
-            TransactionError::InsufficientFundsForRent { account_index: _ } => Self::InsufficientFundsForRent,
+            TransactionError::InsufficientFundsForRent { account_index: _ } => {
+                Self::InsufficientFundsForRent
+            }
         }
     }
 }
