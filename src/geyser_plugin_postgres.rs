@@ -24,7 +24,7 @@ pub struct GeyserPluginPostgres {
     client: Option<ParallelPostgresClient>,
     accounts_selector: Option<AccountsSelector>,
     transaction_selector: Option<TransactionSelector>,
-    batch_optimize_by_skiping_older_slots: Option<u64>,
+    batch_starting_slot: Option<u64>,
 }
 
 impl std::fmt::Debug for GeyserPluginPostgres {
@@ -192,7 +192,7 @@ impl GeyserPlugin for GeyserPluginPostgres {
         let (client, batch_optimize_by_skiping_older_slots) =
             PostgresClientBuilder::build_pararallel_postgres_client(&config)?;
         self.client = Some(client);
-        self.batch_optimize_by_skiping_older_slots = batch_optimize_by_skiping_older_slots;
+        self.batch_starting_slot = batch_optimize_by_skiping_older_slots;
 
         Ok(())
     }
@@ -218,7 +218,7 @@ impl GeyserPlugin for GeyserPluginPostgres {
         // is configured
         if is_startup
             && self
-                .batch_optimize_by_skiping_older_slots
+                .batch_starting_slot
                 .map(|slot_limit| slot < slot_limit)
                 .unwrap_or(false)
         {

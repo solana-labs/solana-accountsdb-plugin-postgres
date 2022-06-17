@@ -844,7 +844,7 @@ impl SimplePostgresClient {
     fn get_highest_available_slot(&mut self) -> Result<u64, GeyserPluginError> {
         let client = self.client.get_mut().unwrap();
 
-        let last_slot_query = "SELECT slot FROM public.slot ORDER BY slot DESC LIMIT 1;";
+        let last_slot_query = "SELECT slot FROM slot ORDER BY slot DESC LIMIT 1;";
 
         let result = client.client.query_opt(last_slot_query, &[]);
         match result {
@@ -1266,7 +1266,6 @@ impl PostgresClientBuilder {
         let batch_optimize_by_skiping_older_slots = match config.batch_optimize_by_skiping_old_slots
         {
             true => {
-                //one request client
                 let mut on_load_client = SimplePostgresClient::new(config)?;
 
                 let max_queue_size = u64::try_from(MAX_ASYNC_REQUESTS).unwrap();
