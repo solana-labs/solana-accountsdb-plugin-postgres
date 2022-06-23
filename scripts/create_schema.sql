@@ -61,7 +61,9 @@ Create TYPE "TransactionErrorCode" AS ENUM (
     'InvalidRentPayingAccount',
     'WouldExceedMaxVoteCostLimit',
     'WouldExceedAccountDataBlockLimit',
-    'WouldExceedAccountDataTotalLimit'    
+    'WouldExceedAccountDataTotalLimit',
+    'DuplicateInstruction',
+    'InsufficientFundsForRent'
 );
 
 CREATE TYPE "TransactionError" AS (
