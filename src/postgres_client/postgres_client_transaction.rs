@@ -582,6 +582,7 @@ impl SimplePostgresClient {
         message_hash=excluded.message_hash, \
         meta=excluded.meta, \
         write_version=excluded.write_version, \
+        index=excluded.index, \
         updated_on=excluded.updated_on";
 
         let stmt = client.prepare(stmt);
