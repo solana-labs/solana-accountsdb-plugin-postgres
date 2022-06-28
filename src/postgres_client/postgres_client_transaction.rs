@@ -643,7 +643,6 @@ pub(crate) mod tests {
             hash::Hash,
             message::VersionedMessage,
             pubkey::Pubkey,
-            sanitize::Sanitize,
             signature::{Keypair, Signature, Signer},
             system_transaction,
             transaction::{
@@ -1353,6 +1352,7 @@ pub(crate) mod tests {
             message_hash,
             Some(true),
             SimpleAddressLoader::Disabled,
+            false,
         )
         .unwrap();
 
@@ -1387,7 +1387,7 @@ pub(crate) mod tests {
         let message_hash = Hash::new_unique();
         let transaction = build_test_transaction_v0();
 
-        transaction.sanitize().unwrap();
+        transaction.sanitize(false).unwrap();
 
         let transaction = SanitizedTransaction::try_create(
             transaction,
@@ -1397,6 +1397,7 @@ pub(crate) mod tests {
                 writable: vec![Pubkey::new_unique(), Pubkey::new_unique()],
                 readonly: vec![Pubkey::new_unique(), Pubkey::new_unique()],
             }),
+            false,
         )
         .unwrap();
 

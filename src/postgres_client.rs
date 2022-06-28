@@ -686,10 +686,6 @@ impl SimplePostgresClient {
 
     /// Flush any left over accounts in batch which are not processed in the last batch
     fn flush_buffered_writes(&mut self) -> Result<(), GeyserPluginError> {
-        if self.pending_account_updates.is_empty() {
-            return Ok(());
-        }
-
         let client = self.client.get_mut().unwrap();
         let insert_account_audit_stmt = &client.insert_account_audit_stmt;
         let statement = &client.update_account_stmt;
