@@ -1134,6 +1134,11 @@ impl ParallelPostgresClient {
         slot: u64,
         is_startup: bool,
     ) -> Result<(), GeyserPluginError> {
+        if !is_startup && account.txn_signature.is_none() {
+            // we are not interested in accountsdb internal bookeeping updates
+            return Ok(());
+        }
+
         if self.last_report.should_update(30000) {
             datapoint_debug!(
                 "postgres-plugin-stats",
