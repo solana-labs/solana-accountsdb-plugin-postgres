@@ -378,6 +378,26 @@ impl GeyserPlugin for GeyserPluginPostgres {
                             });
                     }
                 }
+                ReplicaTransactionInfoVersions::V0_0_2(transaction_info) => {
+                    if let Some(transaction_selector) = &self.transaction_selector {
+                        if !transaction_selector.is_transaction_selected(
+                            transaction_info.is_vote,
+                            Box::new(transaction_info.transaction.message().account_keys().iter()),
+                        ) {
+                            return Ok(());
+                        }
+                    } else {
+                        return Ok(());
+                    }
+
+                    let result = client.log_transaction_info_v2(transaction_info, slot);
+
+                    if let Err(err) = result {
+                        return Err(GeyserPluginError::SlotStatusUpdateError{
+                                msg: format!("Failed to persist the transaction info to the PostgreSQL database. Error: {:?}", err)
+                            });
+                    }
+                }
             },
         }
 
