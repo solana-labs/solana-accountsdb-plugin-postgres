@@ -182,7 +182,7 @@ fn setup_snapshot_validator_config(
     let snapshot_config = SnapshotConfig {
         full_snapshot_archive_interval_slots: snapshot_interval_slots,
         incremental_snapshot_archive_interval_slots: Slot::MAX,
-        snapshot_archives_dir: snapshot_archives_dir.path().to_path_buf(),
+        full_snapshot_archives_dir: snapshot_archives_dir.path().to_path_buf(),
         bank_snapshots_dir: bank_snapshots_dir.path().to_path_buf(),
         ..SnapshotConfig::default()
     };
@@ -315,7 +315,7 @@ fn test_postgres_plugin() {
         .snapshot_config
         .as_ref()
         .unwrap()
-        .snapshot_archives_dir;
+        .full_snapshot_archives_dir;
     info!("Waiting for snapshot");
     let (archive_filename, archive_snapshot_hash) =
         wait_for_next_snapshot(&cluster, snapshot_archives_dir);

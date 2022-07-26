@@ -164,7 +164,7 @@ impl ReadableAccountInfo for DbAccountInfo {
     }
 
     fn txn_signature(&self) -> Option<&[u8]> {
-        self.txn_signature.as_deref().map(|v| v)
+        self.txn_signature.as_deref()
     }
 }
 
