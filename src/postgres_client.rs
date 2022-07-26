@@ -851,6 +851,30 @@ impl SimplePostgresClient {
             slots_at_startup: HashSet::default(),
         })
     }
+
+    fn get_highest_available_slot(&mut self) -> Result<u64, GeyserPluginError> {
+        let client = self.client.get_mut().unwrap();
+
+        let last_slot_query = "SELECT slot FROM slot ORDER BY slot DESC LIMIT 1;";
+
+        let result = client.client.query_opt(last_slot_query, &[]);
+        match result {
+            Ok(opt_slot) => Ok(opt_slot
+                .map(|row| {
+                    let raw_slot: i64 = row.get(0);
+                    raw_slot as u64
+                })
+                .unwrap_or(0)),
+            Err(err) => {
+                let msg = format!(
+                    "Failed to receive last slot from PostgreSQL database. Error: {:?}",
+                    err
+                );
+                error!("{}", msg);
+                Err(GeyserPluginError::AccountsUpdateError { msg })
+            }
+        }
+    }
 }
 
 impl PostgresClient for SimplePostgresClient {
@@ -868,6 +892,7 @@ impl PostgresClient for SimplePostgresClient {
         if !is_startup {
             return self.upsert_account(&account);
         }
+
         self.slots_at_startup.insert(account.slot as u64);
         self.insert_accounts_in_batch(account)
     }
@@ -1253,13 +1278,28 @@ pub struct PostgresClientBuilder {}
 impl PostgresClientBuilder {
     pub fn build_pararallel_postgres_client(
         config: &GeyserPluginPostgresConfig,
-    ) -> Result<ParallelPostgresClient, GeyserPluginError> {
-        ParallelPostgresClient::new(config)
-    }
+    ) -> Result<(ParallelPostgresClient, Option<u64>), GeyserPluginError> {
+        let batch_optimize_by_skiping_older_slots = match config.batch_optimize_by_skiping_old_slots
+        {
+            true => {
+                let mut on_load_client = SimplePostgresClient::new(config)?;
 
-    pub fn build_simple_postgres_client(
-        config: &GeyserPluginPostgresConfig,
-    ) -> Result<SimplePostgresClient, GeyserPluginError> {
-        SimplePostgresClient::new(config)
+                let max_queue_size = u64::try_from(MAX_ASYNC_REQUESTS).unwrap();
+
+                // database if populated concurrently so we need to move some number of slots
+                // below highest available slot to make sure we do not skip anything that was already in DB.
+                let batch_slot_bound = on_load_client
+                    .get_highest_available_slot()?
+                    .saturating_sub(max_queue_size);
+                info!(
+                    "Set batch_optimize_by_skiping_older_slots to {}",
+                    batch_slot_bound
+                );
+                Some(batch_slot_bound)
+            }
+            false => None,
+        };
+
+        ParallelPostgresClient::new(config).map(|v| (v, batch_optimize_by_skiping_older_slots))
     }
 }
