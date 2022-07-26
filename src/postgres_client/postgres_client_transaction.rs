@@ -836,6 +836,7 @@ pub(crate) mod tests {
                 ui_amount_string: "0.42".to_string(),
             },
             owner: Pubkey::new_unique().to_string(),
+            program_id: "program_id".to_string(),
         };
 
         let db_transaction_token_balance =
@@ -1015,6 +1016,7 @@ pub(crate) mod tests {
                         ui_amount_string: "0.42".to_string(),
                     },
                     owner: Pubkey::new_unique().to_string(),
+                    program_id: "program_id".to_string(),
                 },
                 TransactionTokenBalance {
                     account_index: 2,
@@ -1026,6 +1028,7 @@ pub(crate) mod tests {
                         ui_amount_string: "0.38".to_string(),
                     },
                     owner: Pubkey::new_unique().to_string(),
+                    program_id: "program_id".to_string(),
                 },
             ]),
             post_token_balances: Some(vec![
@@ -1039,6 +1042,7 @@ pub(crate) mod tests {
                         ui_amount_string: "0.82".to_string(),
                     },
                     owner: Pubkey::new_unique().to_string(),
+                    program_id: "program_id".to_string(),
                 },
                 TransactionTokenBalance {
                     account_index: 2,
@@ -1050,6 +1054,7 @@ pub(crate) mod tests {
                         ui_amount_string: "0.48".to_string(),
                     },
                     owner: Pubkey::new_unique().to_string(),
+                    program_id: "program_id".to_string(),
                 },
             ]),
             rewards: Some(vec![
@@ -1072,6 +1077,7 @@ pub(crate) mod tests {
                 writable: vec![Pubkey::new_unique(), Pubkey::new_unique()],
                 readonly: vec![Pubkey::new_unique(), Pubkey::new_unique()],
             },
+            return_data: None,
         }
     }
 
