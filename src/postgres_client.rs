@@ -234,6 +234,8 @@ pub trait PostgresClient {
 }
 
 impl SimplePostgresClient {
+
+
     pub fn connect_to_db(config: &GeyserPluginPostgresConfig) -> Result<Client, GeyserPluginError> {
         let port = config.port.unwrap_or(DEFAULT_POSTGRES_PORT);
 
@@ -956,15 +958,7 @@ impl PostgresClientWorker {
         panic_on_db_errors: bool,
     ) -> Result<(), GeyserPluginError> {
         while !exit_worker.load(Ordering::Relaxed) {
-            let mut measure = Measure::start("geyser-plugin-postgres-worker-recv");
             let work = receiver.recv_timeout(Duration::from_millis(500));
-            measure.stop();
-            inc_new_counter_debug!(
-                "geyser-plugin-postgres-worker-recv-us",
-                measure.as_us() as usize,
-                100000,
-                100000
-            );
             match work {
                 Ok(work) => match work {
                     DbWorkItem::UpdateAccount(request) => {
@@ -979,32 +973,13 @@ impl PostgresClientWorker {
                         }
                     }
                     DbWorkItem::UpdateSlot(request) => {
-                        if let Err(err) = self.client.update_slot_status(
-                            request.slot,
-                            request.parent,
-                            request.slot_status,
-                        ) {
-                            error!("Failed to update slot: ({})", err);
-                            if panic_on_db_errors {
-                                abort();
-                            }
-                        }
+
                     }
                     DbWorkItem::LogTransaction(transaction_log_info) => {
-                        if let Err(err) = self.client.log_transaction(*transaction_log_info) {
-                            error!("Failed to update transaction: ({})", err);
-                            if panic_on_db_errors {
-                                abort();
-                            }
-                        }
+
                     }
                     DbWorkItem::UpdateBlockMetadata(block_info) => {
-                        if let Err(err) = self.client.update_block_metadata(*block_info) {
-                            error!("Failed to update block metadata: ({})", err);
-                            if panic_on_db_errors {
-                                abort();
-                            }
-                        }
+
                     }
                 },
                 Err(err) => match err {
@@ -1255,11 +1230,5 @@ impl PostgresClientBuilder {
         config: &GeyserPluginPostgresConfig,
     ) -> Result<ParallelPostgresClient, GeyserPluginError> {
         ParallelPostgresClient::new(config)
-    }
-
-    pub fn build_simple_postgres_client(
-        config: &GeyserPluginPostgresConfig,
-    ) -> Result<SimplePostgresClient, GeyserPluginError> {
-        SimplePostgresClient::new(config)
     }
 }

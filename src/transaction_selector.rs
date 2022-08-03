@@ -65,26 +65,12 @@ impl TransactionSelector {
         is_vote: bool,
         mentioned_addresses: Box<dyn Iterator<Item = &Pubkey> + '_>,
     ) -> bool {
-        if !self.is_enabled() {
-            return false;
-        }
-
-        if self.select_all_transactions || (self.select_all_vote_transactions && is_vote) {
-            return true;
-        }
-        for address in mentioned_addresses {
-            if self.mentioned_addresses.contains(address.as_ref()) {
-                return true;
-            }
-        }
-        false
+        return false;
     }
 
     /// Check if any transaction is of interest at all
     pub fn is_enabled(&self) -> bool {
-        self.select_all_transactions
-            || self.select_all_vote_transactions
-            || !self.mentioned_addresses.is_empty()
+        return false;
     }
 }
 
