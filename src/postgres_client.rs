@@ -39,6 +39,7 @@ use {
 /// The maximum asynchronous requests allowed in the channel to avoid excessive
 /// memory usage. The downside -- calls after this threshold is reached can get blocked.
 const MAX_ASYNC_REQUESTS: usize = 40960;
+const SAFE_BATCH_STARTING_SLOT_CUSHION: u64 = 2 * 40960;
 const DEFAULT_POSTGRES_PORT: u16 = 5432;
 const DEFAULT_THREADS_COUNT: usize = 100;
 const DEFAULT_ACCOUNTS_INSERT_BATCH_SIZE: usize = 10;
@@ -1268,13 +1269,11 @@ impl PostgresClientBuilder {
             true => {
                 let mut on_load_client = SimplePostgresClient::new(config)?;
 
-                let max_queue_size = u64::try_from(MAX_ASYNC_REQUESTS).unwrap();
-
                 // database if populated concurrently so we need to move some number of slots
                 // below highest available slot to make sure we do not skip anything that was already in DB.
                 let batch_slot_bound = on_load_client
                     .get_highest_available_slot()?
-                    .saturating_sub(max_queue_size);
+                    .saturating_sub(SAFE_BATCH_STARTING_SLOT_CUSHION);
                 info!(
                     "Set batch_optimize_by_skiping_older_slots to {}",
                     batch_slot_bound
