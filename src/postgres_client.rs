@@ -611,6 +611,7 @@ impl SimplePostgresClient {
         self.pending_account_updates.push(account);
 
         self.bulk_insert_accounts()?;
+        Ok(())
     }
 
     fn bulk_insert_accounts(&mut self) -> Result<(), GeyserPluginError> {
