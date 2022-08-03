@@ -579,14 +579,6 @@ impl SimplePostgresClient {
             Self::insert_account_audit(account, statement, client)?;
         }
 
-        if let Some(insert_token_owner_index_stmt) = insert_token_owner_index_stmt {
-            Self::update_token_owner_index(client, insert_token_owner_index_stmt, account)?;
-        }
-
-        if let Some(insert_token_mint_index_stmt) = insert_token_mint_index_stmt {
-            Self::update_token_mint_index(client, insert_token_mint_index_stmt, account)?;
-        }
-
         Ok(())
     }
 
@@ -619,14 +611,10 @@ impl SimplePostgresClient {
         self.pending_account_updates.push(account);
 
         self.bulk_insert_accounts()?;
-        self.bulk_insert_token_owner_index()?;
-        self.bulk_insert_token_mint_index()
     }
 
     fn bulk_insert_accounts(&mut self) -> Result<(), GeyserPluginError> {
         if self.pending_account_updates.len() == self.batch_size {
-            let mut measure = Measure::start("geyser-plugin-postgres-prepare-values");
-
             let mut values: Vec<&(dyn types::ToSql + Sync)> =
                 Vec::with_capacity(self.batch_size * ACCOUNT_COLUMN_COUNT);
             let updated_on = Utc::now().naive_utc();
@@ -644,15 +632,7 @@ impl SimplePostgresClient {
                 values.push(&updated_on);
                 values.push(&account.txn_signature);
             }
-            measure.stop();
-            inc_new_counter_debug!(
-                "geyser-plugin-postgres-prepare-values-us",
-                measure.as_us() as usize,
-                10000,
-                10000
-            );
 
-            let mut measure = Measure::start("geyser-plugin-postgres-update-account");
             let client = self.client.get_mut().unwrap();
             let result = client
                 .client
@@ -668,20 +648,6 @@ impl SimplePostgresClient {
                 error!("{}", msg);
                 return Err(GeyserPluginError::AccountsUpdateError { msg });
             }
-
-            measure.stop();
-            inc_new_counter_debug!(
-                "geyser-plugin-postgres-update-account-us",
-                measure.as_us() as usize,
-                10000,
-                10000
-            );
-            inc_new_counter_debug!(
-                "geyser-plugin-postgres-update-account-count",
-                self.batch_size,
-                10000,
-                10000
-            );
         }
         Ok(())
     }
@@ -707,8 +673,6 @@ impl SimplePostgresClient {
             )?;
         }
 
-        let mut measure = Measure::start("geyser-plugin-postgres-flush-slots-us");
-
         for slot in &self.slots_at_startup {
             Self::upsert_slot_status_internal(
                 *slot,
@@ -718,13 +682,6 @@ impl SimplePostgresClient {
                 insert_slot_stmt,
             )?;
         }
-        measure.stop();
-
-        datapoint_info!(
-            "geyser_plugin_notify_account_restore_from_snapshot_summary",
-            ("flush_slots-us", measure.as_us(), i64),
-            ("flush-slots-counts", self.slots_at_startup.len(), i64),
-        );
 
         self.slots_at_startup.clear();
         self.clear_buffered_indexes();
@@ -880,16 +837,7 @@ impl PostgresClient for SimplePostgresClient {
         parent: Option<u64>,
         status: SlotStatus,
     ) -> Result<(), GeyserPluginError> {
-        info!("Updating slot {:?} at with status {:?}", slot, status);
-
-        let client = self.client.get_mut().unwrap();
-
-        let statement = match parent {
-            Some(_) => &client.update_slot_with_parent_stmt,
-            None => &client.update_slot_without_parent_stmt,
-        };
-
-        Self::upsert_slot_status_internal(slot, parent, status, &mut client.client, statement)
+        Ok(())
     }
 
     fn notify_end_of_startup(&mut self) -> Result<(), GeyserPluginError> {
@@ -900,14 +848,14 @@ impl PostgresClient for SimplePostgresClient {
         &mut self,
         transaction_log_info: LogTransactionRequest,
     ) -> Result<(), GeyserPluginError> {
-        self.log_transaction_impl(transaction_log_info)
+        Ok(())
     }
 
     fn update_block_metadata(
         &mut self,
         block_info: UpdateBlockMetadataRequest,
     ) -> Result<(), GeyserPluginError> {
-        self.update_block_metadata_impl(block_info)
+        Ok(())
     }
 }
 
@@ -1114,28 +1062,10 @@ impl ParallelPostgresClient {
             return Ok(());
         }
 
-        if self.last_report.should_update(30000) {
-            datapoint_debug!(
-                "postgres-plugin-stats",
-                ("message-queue-length", self.sender.len() as i64, i64),
-            );
-        }
-        let mut measure = Measure::start("geyser-plugin-posgres-create-work-item");
         let wrk_item = DbWorkItem::UpdateAccount(Box::new(UpdateAccountRequest {
             account: DbAccountInfo::new(account, slot),
             is_startup,
         }));
-
-        measure.stop();
-
-        inc_new_counter_debug!(
-            "geyser-plugin-posgres-create-work-item-us",
-            measure.as_us() as usize,
-            100000,
-            100000
-        );
-
-        let mut measure = Measure::start("geyser-plugin-posgres-send-msg");
 
         if let Err(err) = self.sender.send(wrk_item) {
             return Err(GeyserPluginError::AccountsUpdateError {
@@ -1147,14 +1077,6 @@ impl ParallelPostgresClient {
             });
         }
 
-        measure.stop();
-        inc_new_counter_debug!(
-            "geyser-plugin-posgres-send-msg-us",
-            measure.as_us() as usize,
-            100000,
-            100000
-        );
-
         Ok(())
     }
 
@@ -1164,18 +1086,6 @@ impl ParallelPostgresClient {
         parent: Option<u64>,
         status: SlotStatus,
     ) -> Result<(), GeyserPluginError> {
-        if let Err(err) = self
-            .sender
-            .send(DbWorkItem::UpdateSlot(Box::new(UpdateSlotRequest {
-                slot,
-                parent,
-                slot_status: status,
-            })))
-        {
-            return Err(GeyserPluginError::SlotStatusUpdateError {
-                msg: format!("Failed to update the slot {:?}, error: {:?}", slot, err),
-            });
-        }
         Ok(())
     }
 
@@ -1183,18 +1093,6 @@ impl ParallelPostgresClient {
         &mut self,
         block_info: &ReplicaBlockInfo,
     ) -> Result<(), GeyserPluginError> {
-        if let Err(err) = self.sender.send(DbWorkItem::UpdateBlockMetadata(Box::new(
-            UpdateBlockMetadataRequest {
-                block_info: DbBlockInfo::from(block_info),
-            },
-        ))) {
-            return Err(GeyserPluginError::SlotStatusUpdateError {
-                msg: format!(
-                    "Failed to update the block metadata at slot {:?}, error: {:?}",
-                    block_info.slot, err
-                ),
-            });
-        }
         Ok(())
     }
 
