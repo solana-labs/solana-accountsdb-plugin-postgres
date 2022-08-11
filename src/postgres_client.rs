@@ -1280,24 +1280,24 @@ impl PostgresClientBuilder {
     pub fn build_pararallel_postgres_client(
         config: &GeyserPluginPostgresConfig,
     ) -> Result<(ParallelPostgresClient, Option<u64>), GeyserPluginError> {
-        let batch_optimize_by_skiping_older_slots = match config.batch_optimize_by_skiping_old_slots
-        {
-            true => {
-                let mut on_load_client = SimplePostgresClient::new(config)?;
+        let batch_optimize_by_skiping_older_slots =
+            match config.skip_upsert_existing_accounts_at_startup {
+                true => {
+                    let mut on_load_client = SimplePostgresClient::new(config)?;
 
-                // database if populated concurrently so we need to move some number of slots
-                // below highest available slot to make sure we do not skip anything that was already in DB.
-                let batch_slot_bound = on_load_client
-                    .get_highest_available_slot()?
-                    .saturating_sub(SAFE_BATCH_STARTING_SLOT_CUSHION);
-                info!(
-                    "Set batch_optimize_by_skiping_older_slots to {}",
-                    batch_slot_bound
-                );
-                Some(batch_slot_bound)
-            }
-            false => None,
-        };
+                    // database if populated concurrently so we need to move some number of slots
+                    // below highest available slot to make sure we do not skip anything that was already in DB.
+                    let batch_slot_bound = on_load_client
+                        .get_highest_available_slot()?
+                        .saturating_sub(SAFE_BATCH_STARTING_SLOT_CUSHION);
+                    info!(
+                        "Set batch_optimize_by_skiping_older_slots to {}",
+                        batch_slot_bound
+                    );
+                    Some(batch_slot_bound)
+                }
+                false => None,
+            };
 
         ParallelPostgresClient::new(config).map(|v| (v, batch_optimize_by_skiping_older_slots))
     }

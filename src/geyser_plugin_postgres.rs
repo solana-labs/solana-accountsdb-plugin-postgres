@@ -83,9 +83,10 @@ pub struct GeyserPluginPostgresConfig {
     /// Controls whetherf to index the token mints. The default is false
     pub index_token_mint: Option<bool>,
 
-    /// Controls if this plugin can read the database on_load() and find slot below that one everything should be in database
+    /// Controls if this plugin can read the database on_load() to find heighest slot
+    /// and ignore upsetr accounts (at_startup) that should already exist in DB
     #[serde(default)]
-    pub batch_optimize_by_skiping_old_slots: bool,
+    pub skip_upsert_existing_accounts_at_startup: bool,
 }
 
 #[derive(Error, Debug)]
