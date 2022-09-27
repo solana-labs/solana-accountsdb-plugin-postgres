@@ -19,7 +19,7 @@ use {
     postgres_client_transaction::LogTransactionRequest,
     postgres_openssl::MakeTlsConnector,
     solana_geyser_plugin_interface::geyser_plugin_interface::{
-        GeyserPluginError, ReplicaAccountInfoV2, ReplicaBlockInfo, SlotStatus,
+        GeyserPluginError, ReplicaBlockInfo, SlotStatus,
     },
     solana_measure::measure::Measure,
     solana_metrics::*,
@@ -166,40 +166,6 @@ impl ReadableAccountInfo for DbAccountInfo {
 
     fn txn_signature(&self) -> Option<&[u8]> {
         self.txn_signature.as_deref()
-    }
-}
-
-impl<'a> ReadableAccountInfo for ReplicaAccountInfoV2<'a> {
-    fn pubkey(&self) -> &[u8] {
-        self.pubkey
-    }
-
-    fn owner(&self) -> &[u8] {
-        self.owner
-    }
-
-    fn lamports(&self) -> i64 {
-        self.lamports as i64
-    }
-
-    fn executable(&self) -> bool {
-        self.executable
-    }
-
-    fn rent_epoch(&self) -> i64 {
-        self.rent_epoch as i64
-    }
-
-    fn data(&self) -> &[u8] {
-        self.data
-    }
-
-    fn write_version(&self) -> i64 {
-        self.write_version as i64
-    }
-
-    fn txn_signature(&self) -> Option<&[u8]> {
-        self.txn_signature.map(|v| v.as_ref())
     }
 }
 
@@ -1150,61 +1116,6 @@ impl ParallelPostgresClient {
                 error!("The worker thread has failed: {:?}", result);
             }
         }
-
-        Ok(())
-    }
-
-    pub fn update_account(
-        &mut self,
-        account: &ReplicaAccountInfoV2,
-        slot: u64,
-        is_startup: bool,
-    ) -> Result<(), GeyserPluginError> {
-        if !is_startup && account.txn_signature.is_none() {
-            // we are not interested in accountsdb internal bookeeping updates
-            return Ok(());
-        }
-
-        if self.last_report.should_update(30000) {
-            datapoint_debug!(
-                "postgres-plugin-stats",
-                ("message-queue-length", self.sender.len() as i64, i64),
-            );
-        }
-        let mut measure = Measure::start("geyser-plugin-posgres-create-work-item");
-        let wrk_item = DbWorkItem::UpdateAccount(Box::new(UpdateAccountRequest {
-            account: DbAccountInfo::new(account, slot),
-            is_startup,
-        }));
-
-        measure.stop();
-
-        inc_new_counter_debug!(
-            "geyser-plugin-posgres-create-work-item-us",
-            measure.as_us() as usize,
-            100000,
-            100000
-        );
-
-        let mut measure = Measure::start("geyser-plugin-posgres-send-msg");
-
-        if let Err(err) = self.sender.send(wrk_item) {
-            return Err(GeyserPluginError::AccountsUpdateError {
-                msg: format!(
-                    "Failed to update the account {:?}, error: {:?}",
-                    bs58::encode(account.pubkey()).into_string(),
-                    err
-                ),
-            });
-        }
-
-        measure.stop();
-        inc_new_counter_debug!(
-            "geyser-plugin-posgres-send-msg-us",
-            measure.as_us() as usize,
-            100000,
-            100000
-        );
 
         Ok(())
     }

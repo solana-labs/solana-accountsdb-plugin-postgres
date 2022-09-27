@@ -18,20 +18,20 @@ bytemuck = "1.7.2"
 chrono = { version = "0.4.11", features = ["serde"] }
 crossbeam-channel = "0.5"
 log = "0.4.14"
-openssl = { version = "0.10" }
+openssl = { version = "0.10"}
 postgres = { version = "0.19.2", features = ["with-chrono-0_4"] }
 postgres-types = { version = "0.2.2", features = ["derive"] }
 postgres-openssl = { version = "0.5.0"}
 serde = "1.0.133"
 serde_derive = "1.0.103"
 serde_json = "1.0.74"
-solana-geyser-plugin-interface = { version = "=1.11.1" }
-solana-logger = { version = "=1.11.1" }
-solana-measure = { version = "=1.11.1" }
-solana-metrics = { version = "=1.11.1" }
-solana-runtime = { version = "=1.11.1" }
-solana-sdk = { version = "=1.11.1" }
-solana-transaction-status = { version = "=1.11.1" }
+solana-geyser-plugin-interface = { version = "=1.13.1" }
+solana-logger = { version = "=1.13.1" }
+solana-measure = { version = "=1.13.1" }
+solana-metrics = { version = "=1.13.1" }
+solana-runtime = { version = "=1.13.1" }
+solana-sdk = { version = "=1.13.1" }
+solana-transaction-status = { version = "=1.13.1" }
 thiserror = "1.0.30"
 tokio-postgres = "0.7.4"
 
@@ -39,11 +39,11 @@ tokio-postgres = "0.7.4"
 libc = "0.2.112"
 libloading = "0.7.2"
 serial_test = "0.5.1"
-solana-account-decoder = { version = "=1.11.1" }
-solana-core = { version = "=1.11.1" }
-solana-local-cluster = { version = "=1.11.1" }
-solana-net-utils = { version = "=1.11.1" }
-solana-streamer = { version = "=1.11.1" }
+solana-account-decoder = { version = "=1.13.1" }
+solana-core = { version = "=1.13.1" }
+solana-local-cluster = { version = "=1.13.1" }
+solana-net-utils = { version = "=1.13.1" }
+solana-streamer = { version = "=1.13.1" }
 tempfile = "3.2.0"
 
 [package.metadata.docs.rs]
