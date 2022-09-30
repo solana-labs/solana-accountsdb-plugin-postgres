@@ -11,7 +11,7 @@ use {
     serde_json,
     solana_geyser_plugin_interface::geyser_plugin_interface::{
         GeyserPlugin, GeyserPluginError, ReplicaAccountInfoVersions, ReplicaBlockInfoVersions,
-        ReplicaTransactionInfoVersions, Result, SlotStatus,
+        ReplicaTransactionInfoVersions, Result, SlotStatus, ReplicaTransactionInfo
     },
     solana_measure::measure::Measure,
     solana_metrics::*,
