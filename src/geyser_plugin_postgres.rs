@@ -411,7 +411,7 @@ impl GeyserPlugin for GeyserPluginPostgres {
                         transaction_status_meta: transaction_info.transaction_status_meta
                     };
 
-                    let result = client.log_transaction_info(transaction_info as Replication, slot);
+                    let result = client.log_transaction_info(&replication_transaction_info, slot);
 
                     if let Err(err) = result {
                         return Err(GeyserPluginError::SlotStatusUpdateError{
