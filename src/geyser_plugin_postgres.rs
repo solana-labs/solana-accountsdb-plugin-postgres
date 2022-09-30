@@ -404,7 +404,14 @@ impl GeyserPlugin for GeyserPluginPostgres {
                         return Ok(());
                     }
 
-                    let result = client.log_transaction_info(transaction_info, slot);
+                    let replication_transaction_info = ReplicaTransactionInfo {
+                        is_vote: transaction_info.is_vote,
+                        signature: transaction_info.signature,
+                        transaction: transaction_info.transaction,
+                        transaction_status_meta: transaction_info.transaction_status_meta
+                    };
+
+                    let result = client.log_transaction_info(transaction_info as Replication, slot);
 
                     if let Err(err) = result {
                         return Err(GeyserPluginError::SlotStatusUpdateError{
