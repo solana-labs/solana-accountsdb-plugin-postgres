@@ -10,7 +10,7 @@ use {
     postgres::{Client, Statement},
     postgres_types::{FromSql, ToSql},
     solana_geyser_plugin_interface::geyser_plugin_interface::{
-        GeyserPluginError, ReplicaTransactionInfo,
+        GeyserPluginError, ReplicaTransactionInfoV2,
     },
     solana_runtime::bank::RewardType,
     solana_sdk::{
@@ -149,6 +149,7 @@ pub struct DbTransaction {
     /// Given a slot, the transaction with a smaller write_version appears
     /// before transactions with higher write_versions in a shred.
     pub write_version: i64,
+    pub index: i64,
 }
 
 pub struct LogTransactionRequest {
@@ -487,7 +488,7 @@ impl From<&TransactionStatusMeta> for DbTransactionStatusMeta {
 
 fn build_db_transaction(
     slot: u64,
-    transaction_info: &ReplicaTransactionInfo,
+    transaction_info: &ReplicaTransactionInfoV2,
     transaction_write_version: u64,
 ) -> DbTransaction {
     DbTransaction {
@@ -521,6 +522,7 @@ fn build_db_transaction(
             .to_vec(),
         meta: DbTransactionStatusMeta::from(transaction_info.transaction_status_meta),
         write_version: transaction_write_version as i64,
+        index: transaction_info.index as i64,
     }
 }
 
@@ -530,8 +532,8 @@ impl SimplePostgresClient {
         config: &GeyserPluginPostgresConfig,
     ) -> Result<Statement, GeyserPluginError> {
         let stmt = "INSERT INTO transaction AS txn (signature, is_vote, slot, message_type, legacy_message, \
-        v0_loaded_message, signatures, message_hash, meta, write_version, updated_on) \
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) \
+        v0_loaded_message, signatures, message_hash, meta, write_version, index, updated_on) \
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) \
         ON CONFLICT (slot, signature) DO UPDATE SET is_vote=excluded.is_vote, \
         message_type=excluded.message_type, \
         legacy_message=excluded.legacy_message, \
@@ -540,6 +542,7 @@ impl SimplePostgresClient {
         message_hash=excluded.message_hash, \
         meta=excluded.meta, \
         write_version=excluded.write_version, \
+        index=excluded.index,
         updated_on=excluded.updated_on";
 
         let stmt = client.prepare(stmt);
@@ -580,6 +583,7 @@ impl SimplePostgresClient {
                 &transaction_info.message_hash,
                 &transaction_info.meta,
                 &transaction_info.write_version,
+                &transaction_info.index,
                 &updated_on,
             ],
         );
@@ -600,7 +604,7 @@ impl SimplePostgresClient {
 impl ParallelPostgresClient {
     fn build_transaction_request(
         slot: u64,
-        transaction_info: &ReplicaTransactionInfo,
+        transaction_info: &ReplicaTransactionInfoV2,
         transaction_write_version: u64,
     ) -> LogTransactionRequest {
         LogTransactionRequest {
@@ -614,7 +618,7 @@ impl ParallelPostgresClient {
 
     pub fn log_transaction_info(
         &mut self,
-        transaction_info: &ReplicaTransactionInfo,
+        transaction_info: &ReplicaTransactionInfoV2,
         slot: u64,
     ) -> Result<(), GeyserPluginError> {
         self.transaction_write_version
@@ -1295,7 +1299,7 @@ pub(crate) mod tests {
 
     fn check_transaction(
         slot: u64,
-        transaction: &ReplicaTransactionInfo,
+        transaction: &ReplicaTransactionInfoV2,
         db_transaction: &DbTransaction,
     ) {
         assert_eq!(transaction.signature.as_ref(), db_transaction.signature);
@@ -1364,7 +1368,7 @@ pub(crate) mod tests {
         .unwrap();
 
         let transaction_status_meta = build_transaction_status_meta();
-        let transaction_info = ReplicaTransactionInfo {
+        let transaction_info = ReplicaTransactionInfoV2 {
             signature: &signature,
             is_vote: false,
             transaction: &transaction,
@@ -1409,7 +1413,7 @@ pub(crate) mod tests {
         .unwrap();
 
         let transaction_status_meta = build_transaction_status_meta();
-        let transaction_info = ReplicaTransactionInfo {
+        let transaction_info = ReplicaTransactionInfoV2 {
             signature: &signature,
             is_vote: true,
             transaction: &transaction,
