@@ -1373,6 +1373,7 @@ pub(crate) mod tests {
             is_vote: false,
             transaction: &transaction,
             transaction_status_meta: &transaction_status_meta,
+            index: 0,
         };
 
         let slot = 54;
@@ -1418,6 +1419,7 @@ pub(crate) mod tests {
             is_vote: true,
             transaction: &transaction,
             transaction_status_meta: &transaction_status_meta,
+            index: 0,
         };
 
         let slot = 54;
