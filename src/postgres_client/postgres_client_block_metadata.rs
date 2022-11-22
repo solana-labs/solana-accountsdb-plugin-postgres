@@ -43,18 +43,20 @@ impl SimplePostgresClient {
     ) -> Result<Statement, GeyserPluginError> {
         let stmt =
             "INSERT INTO block (slot, blockhash, rewards, block_time, block_height, updated_on) \
-        VALUES ($1, $2, $3, $4, $5, $6)";
+        VALUES ($1, $2, $3, $4, $5, $6) \
+        ON CONFLICT (slot) DO UPDATE SET blockhash=excluded.blockhash, rewards=excluded.rewards, \
+        block_time=excluded.block_time, block_height=excluded.block_height, updated_on=excluded.updated_on";
 
         let stmt = client.prepare(stmt);
 
         match stmt {
             Err(err) => {
-                return Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
+                Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
                     msg: format!(
                         "Error in preparing for the block metadata update PostgreSQL database: ({}) host: {:?} user: {:?} config: {:?}",
                         err, config.host, config.user, config
                     ),
-                })));
+                })))
             }
             Ok(stmt) => Ok(stmt),
         }
