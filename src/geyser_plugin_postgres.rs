@@ -11,7 +11,7 @@ use {
     serde_json,
     solana_geyser_plugin_interface::geyser_plugin_interface::{
         GeyserPlugin, GeyserPluginError, ReplicaAccountInfoVersions, ReplicaBlockInfoVersions,
-        ReplicaTransactionInfoVersions, Result, SlotStatus, ReplicaTransactionInfo
+        ReplicaTransactionInfo, ReplicaTransactionInfoVersions, Result, SlotStatus,
     },
     solana_measure::measure::Measure,
     solana_metrics::*,
@@ -392,7 +392,7 @@ impl GeyserPlugin for GeyserPluginPostgres {
                                 msg: format!("Failed to persist the transaction info to the PostgreSQL database. Error: {:?}", err)
                             });
                     }
-                },
+                }
                 ReplicaTransactionInfoVersions::V0_0_2(transaction_info) => {
                     if let Some(transaction_selector) = &self.transaction_selector {
                         if !transaction_selector.is_transaction_selected(
@@ -409,7 +409,7 @@ impl GeyserPlugin for GeyserPluginPostgres {
                         is_vote: transaction_info.is_vote,
                         signature: transaction_info.signature,
                         transaction: transaction_info.transaction,
-                        transaction_status_meta: transaction_info.transaction_status_meta
+                        transaction_status_meta: transaction_info.transaction_status_meta,
                     };
 
                     let result = client.log_transaction_info(&replication_transaction_info, slot);
