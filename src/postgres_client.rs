@@ -376,12 +376,12 @@ impl SimplePostgresClient {
 
         match bulk_stmt {
             Err(err) => {
-                return Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
+                Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
                     msg: format!(
                         "Error in preparing for the accounts update PostgreSQL database: {} host: {:?} user: {:?} config: {:?}",
                         err, config.host, config.user, config
                     ),
-                })));
+                })))
             }
             Ok(update_account_stmt) => Ok(update_account_stmt),
         }
@@ -401,12 +401,12 @@ impl SimplePostgresClient {
 
         match stmt {
             Err(err) => {
-                return Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
+                Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
                     msg: format!(
                         "Error in preparing for the accounts update PostgreSQL database: {} host: {:?} user: {:?} config: {:?}",
                         err, config.host, config.user, config
                     ),
-                })));
+                })))
             }
             Ok(update_account_stmt) => Ok(update_account_stmt),
         }
@@ -421,12 +421,12 @@ impl SimplePostgresClient {
 
         match statement {
             Err(err) => {
-                return Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
+                Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
                     msg: format!(
                         "Error in preparing for the statement {} for PostgreSQL database: {} host: {:?} user: {:?} config: {:?}",
                         stmt, err, config.host, config.user, config
                     ),
-                })));
+                })))
             }
             Ok(statement) => Ok(statement),
         }
@@ -443,12 +443,12 @@ impl SimplePostgresClient {
 
         match stmt {
             Err(err) => {
-                return Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
+                Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
                     msg: format!(
                         "Error in preparing for the account_audit update PostgreSQL database: {} host: {:?} user: {:?} config: {:?}",
                         err, config.host, config.user, config
                     ),
-                })));
+                })))
             }
             Ok(stmt) => Ok(stmt),
         }
@@ -466,12 +466,12 @@ impl SimplePostgresClient {
 
         match stmt {
             Err(err) => {
-                return Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
+                Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
                     msg: format!(
                         "Error in preparing for the slot update PostgreSQL database: {} host: {:?} user: {:?} config: {:?}",
                         err, config.host, config.user, config
                     ),
-                })));
+                })))
             }
             Ok(stmt) => Ok(stmt),
         }
@@ -489,12 +489,12 @@ impl SimplePostgresClient {
 
         match stmt {
             Err(err) => {
-                return Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
+                Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
                     msg: format!(
                         "Error in preparing for the slot update PostgreSQL database: {} host: {:?} user: {:?} config: {:?}",
                         err, config.host, config.user, config
                     ),
-                })));
+                })))
             }
             Ok(stmt) => Ok(stmt),
         }

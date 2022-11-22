@@ -34,7 +34,7 @@ impl std::fmt::Debug for GeyserPluginPostgres {
 }
 
 /// The Configuration for the PostgreSQL plugin
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct GeyserPluginPostgresConfig {
     /// The host name or IP of the PostgreSQL server
     pub host: Option<String>,

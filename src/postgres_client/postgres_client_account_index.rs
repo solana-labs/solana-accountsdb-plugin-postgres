@@ -96,12 +96,12 @@ impl SimplePostgresClient {
 
         match bulk_stmt {
             Err(err) => {
-                return Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
+                Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
                     msg: format!(
                         "Error in preparing for the {} index update PostgreSQL database: {} host: {:?} user: {:?} config: {:?}",
                         table, err, config.host, config.user, config
                     ),
-                })));
+                })))
             }
             Ok(statement) => Ok(statement),
         }

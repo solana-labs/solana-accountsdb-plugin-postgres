@@ -53,7 +53,7 @@ pub struct DbTransactionTokenBalance {
     pub owner: String,
 }
 
-#[derive(Clone, Debug, FromSql, ToSql, PartialEq)]
+#[derive(Clone, Debug, Eq, FromSql, ToSql, PartialEq)]
 #[postgres(name = "RewardType")]
 pub enum DbRewardType {
     Fee,
@@ -311,7 +311,7 @@ impl From<&Reward> for DbReward {
     }
 }
 
-#[derive(Clone, Debug, FromSql, ToSql, PartialEq)]
+#[derive(Clone, Debug, Eq, FromSql, ToSql, PartialEq)]
 #[postgres(name = "TransactionErrorCode")]
 pub enum DbTransactionErrorCode {
     AccountInUse,
@@ -400,7 +400,7 @@ impl From<&TransactionError> for DbTransactionErrorCode {
     }
 }
 
-#[derive(Clone, Debug, FromSql, ToSql, PartialEq)]
+#[derive(Clone, Debug, Eq, FromSql, ToSql, PartialEq)]
 #[postgres(name = "TransactionError")]
 pub struct DbTransactionError {
     error_code: DbTransactionErrorCode,
@@ -546,12 +546,12 @@ impl SimplePostgresClient {
 
         match stmt {
             Err(err) => {
-                return Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
+                Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
                     msg: format!(
                         "Error in preparing for the transaction update PostgreSQL database: ({}) host: {:?} user: {:?} config: {:?}",
                         err, config.host, config.user, config
                     ),
-                })));
+                })))
             }
             Ok(stmt) => Ok(stmt),
         }

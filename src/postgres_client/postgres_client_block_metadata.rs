@@ -51,12 +51,12 @@ impl SimplePostgresClient {
 
         match stmt {
             Err(err) => {
-                return Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
+                Err(GeyserPluginError::Custom(Box::new(GeyserPluginPostgresError::DataSchemaError {
                     msg: format!(
                         "Error in preparing for the block metadata update PostgreSQL database: ({}) host: {:?} user: {:?} config: {:?}",
                         err, config.host, config.user, config
                     ),
-                })));
+                })))
             }
             Ok(stmt) => Ok(stmt),
         }
