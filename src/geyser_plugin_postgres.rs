@@ -395,7 +395,7 @@ impl GeyserPlugin for GeyserPluginPostgres {
                 }
                 _ => {
                     return Err(GeyserPluginError::SlotStatusUpdateError{
-                        msg: format!("Failed to persist the transaction info to the PostgreSQL database. Unsupported format.")
+                        msg: "Failed to persist the transaction info to the PostgreSQL database. Unsupported format.".to_string()
                     });
                 }
             },
