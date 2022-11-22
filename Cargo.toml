@@ -3,7 +3,7 @@ authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 edition = "2021"
 name = "solana-geyser-plugin-postgres"
 description = "The Solana AccountsDb plugin for PostgreSQL database."
-version = "1.11.1"
+version = "1.14.3"
 repository = "https://github.com/solana-labs/solana"
 license = "Apache-2.0"
 homepage = "https://solana.com/"
@@ -14,37 +14,37 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 bs58 = "0.4.0"
-bytemuck = "1.7.2"
-chrono = { version = "0.4.11", features = ["serde"] }
-crossbeam-channel = "0.5"
-log = "0.4.14"
-openssl = { version = "0.10" }
-postgres = { version = "0.19.2", features = ["with-chrono-0_4"] }
-postgres-types = { version = "0.2.2", features = ["derive"] }
+bytemuck = "1.12.1"
+chrono = { version = "0.4.22", features = ["serde"] }
+crossbeam-channel = "0.5.6"
+log = "0.4.17"
+openssl = { version = "0.10.42" }
+postgres = { version = "0.19.4", features = ["with-chrono-0_4"] }
+postgres-types = { version = "0.2.4", features = ["derive"] }
 postgres-openssl = { version = "0.5.0"}
-serde = "1.0.133"
-serde_derive = "1.0.103"
-serde_json = "1.0.74"
-solana-geyser-plugin-interface = { version = "=1.11.1" }
-solana-logger = { version = "=1.11.1" }
-solana-measure = { version = "=1.11.1" }
-solana-metrics = { version = "=1.11.1" }
-solana-runtime = { version = "=1.11.1" }
-solana-sdk = { version = "=1.11.1" }
-solana-transaction-status = { version = "=1.11.1" }
-thiserror = "1.0.30"
-tokio-postgres = "0.7.4"
+serde = "1.0.145"
+serde_derive = "1.0.145"
+serde_json = "1.0.85"
+solana-geyser-plugin-interface = { version = "=1.14.3" }
+solana-logger = { version = "=1.14.3" }
+solana-measure = { version = "=1.14.3" }
+solana-metrics = { version = "=1.14.3" }
+solana-runtime = { version = "=1.14.3" }
+solana-sdk = { version = "=1.14.3" }
+solana-transaction-status = { version = "=1.14.3" }
+thiserror = "1.0.37"
+tokio-postgres = "0.7.7"
 
 [dev-dependencies]
-libc = "0.2.112"
-libloading = "0.7.2"
-serial_test = "0.5.1"
-solana-account-decoder = { version = "=1.11.1" }
-solana-core = { version = "=1.11.1" }
-solana-local-cluster = { version = "=1.11.1" }
-solana-net-utils = { version = "=1.11.1" }
-solana-streamer = { version = "=1.11.1" }
-tempfile = "3.2.0"
+libc = "0.2.134"
+libloading = "0.7.3"
+serial_test = "0.9.0"
+solana-account-decoder = { version = "=1.14.3" }
+solana-core = { version = "=1.14.3" }
+solana-local-cluster = { version = "=1.14.3" }
+solana-net-utils = { version = "=1.14.3" }
+solana-streamer = { version = "=1.14.3" }
+tempfile = "3.3.0"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]

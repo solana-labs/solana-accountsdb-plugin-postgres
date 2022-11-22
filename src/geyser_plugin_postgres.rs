@@ -11,7 +11,7 @@ use {
     serde_json,
     solana_geyser_plugin_interface::geyser_plugin_interface::{
         GeyserPlugin, GeyserPluginError, ReplicaAccountInfoVersions, ReplicaBlockInfoVersions,
-        ReplicaTransactionInfoVersions, Result, SlotStatus,
+        ReplicaTransactionInfoVersions, Result, SlotStatus, ReplicaTransactionInfo
     },
     solana_measure::measure::Measure,
     solana_metrics::*,
@@ -385,6 +385,33 @@ impl GeyserPlugin for GeyserPluginPostgres {
                     }
 
                     let result = client.log_transaction_info(transaction_info, slot);
+
+                    if let Err(err) = result {
+                        return Err(GeyserPluginError::SlotStatusUpdateError{
+                                msg: format!("Failed to persist the transaction info to the PostgreSQL database. Error: {:?}", err)
+                            });
+                    }
+                },
+                ReplicaTransactionInfoVersions::V0_0_2(transaction_info) => {
+                    if let Some(transaction_selector) = &self.transaction_selector {
+                        if !transaction_selector.is_transaction_selected(
+                            transaction_info.is_vote,
+                            Box::new(transaction_info.transaction.message().account_keys().iter()),
+                        ) {
+                            return Ok(());
+                        }
+                    } else {
+                        return Ok(());
+                    }
+
+                    let replication_transaction_info = ReplicaTransactionInfo {
+                        is_vote: transaction_info.is_vote,
+                        signature: transaction_info.signature,
+                        transaction: transaction_info.transaction,
+                        transaction_status_meta: transaction_info.transaction_status_meta
+                    };
+
+                    let result = client.log_transaction_info(&replication_transaction_info, slot);
 
                     if let Err(err) = result {
                         return Err(GeyserPluginError::SlotStatusUpdateError{
