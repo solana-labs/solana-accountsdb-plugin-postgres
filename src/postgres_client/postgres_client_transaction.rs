@@ -10,7 +10,7 @@ use {
     postgres::{Client, Statement},
     postgres_types::{FromSql, ToSql},
     solana_geyser_plugin_interface::geyser_plugin_interface::{
-        GeyserPluginError, ReplicaTransactionInfoV2,
+        GeyserPluginError, ReplicaTransactionInfoV2, LegacyMessage
     },
     solana_runtime::bank::RewardType,
     solana_sdk::{
@@ -234,6 +234,27 @@ impl From<&Message> for DbTransactionMessage {
     }
 }
 
+impl From<&LegacyMessage<'_>> for DbTransactionMessage {
+    fn from(message: &LegacyMessage) -> Self {
+        Self {
+            header: DbTransactionMessageHeader::from(&message.message.header),
+            account_keys: message
+                .message
+                .account_keys
+                .iter()
+                .map(|key| key.as_ref().to_vec())
+                .collect(),
+            recent_blockhash: message.message.recent_blockhash.as_ref().to_vec(),
+            instructions: message
+                .message
+                .instructions
+                .iter()
+                .map(DbCompiledInstruction::from)
+                .collect(),
+        }
+    }
+}
+   
 impl From<&v0::Message> for DbTransactionMessageV0 {
     fn from(message: &v0::Message) -> Self {
         Self {
