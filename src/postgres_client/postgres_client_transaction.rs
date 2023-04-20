@@ -501,7 +501,7 @@ fn build_db_transaction(
         },
         legacy_message: match transaction_info.transaction.message() {
             SanitizedMessage::Legacy(legacy_message) => {
-                Some(DbTransactionMessage::from(legacy_message))
+                Some(DbTransactionMessage::from(legacy_message.message.as_ref()))
             }
             _ => None,
         },
