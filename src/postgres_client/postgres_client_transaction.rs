@@ -1309,7 +1309,7 @@ pub(crate) mod tests {
             SanitizedMessage::Legacy(message) => {
                 assert_eq!(db_transaction.message_type, 0);
                 check_transaction_message_equality(
-                    message,
+                    &message.message,
                     db_transaction.legacy_message.as_ref().unwrap(),
                 );
             }
