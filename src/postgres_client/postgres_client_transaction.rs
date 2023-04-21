@@ -501,7 +501,7 @@ fn build_db_transaction(
         },
         legacy_message: match transaction_info.transaction.message() {
             SanitizedMessage::Legacy(legacy_message) => {
-                Some(DbTransactionMessage::from(legacy_message))
+                Some(DbTransactionMessage::from(legacy_message.message.as_ref()))
             }
             _ => None,
         },
@@ -1309,7 +1309,7 @@ pub(crate) mod tests {
             SanitizedMessage::Legacy(message) => {
                 assert_eq!(db_transaction.message_type, 0);
                 check_transaction_message_equality(
-                    message,
+                    &message.message,
                     db_transaction.legacy_message.as_ref().unwrap(),
                 );
             }
