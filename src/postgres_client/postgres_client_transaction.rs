@@ -276,7 +276,7 @@ impl From<&InnerInstructions> for DbInnerInstructions {
             instructions: instructions
                 .instructions
                 .iter()
-                .map(DbCompiledInstruction::from)
+                .map(|instruction| DbCompiledInstruction::from(&instruction.instruction))
                 .collect(),
         }
     }
@@ -348,6 +348,7 @@ pub enum DbTransactionErrorCode {
     WouldExceedAccountDataTotalLimit,
     DuplicateInstruction,
     InsufficientFundsForRent,
+    MaxLoadedAccountsDataSizeExceeded,
 }
 
 impl From<&TransactionError> for DbTransactionErrorCode {
@@ -396,6 +397,9 @@ impl From<&TransactionError> for DbTransactionErrorCode {
             TransactionError::DuplicateInstruction(_) => Self::DuplicateInstruction,
             TransactionError::InsufficientFundsForRent { account_index: _ } => {
                 Self::InsufficientFundsForRent
+            }
+            TransactionError::MaxLoadedAccountsDataSizeExceeded => {
+                Self::MaxLoadedAccountsDataSizeExceeded
             }
         }
     }
@@ -653,6 +657,7 @@ pub(crate) mod tests {
                 SanitizedTransaction, SimpleAddressLoader, Transaction, VersionedTransaction,
             },
         },
+        solana_transaction_status::InnerInstruction,
     };
 
     fn check_compiled_instruction_equality(
@@ -710,7 +715,7 @@ pub(crate) mod tests {
 
         for i in 0..inner_instructions.instructions.len() {
             check_compiled_instruction_equality(
-                &inner_instructions.instructions[i],
+                &inner_instructions.instructions[i].instruction,
                 &db_inner_instructions.instructions[i],
             )
         }
@@ -721,15 +726,21 @@ pub(crate) mod tests {
         let inner_instructions = InnerInstructions {
             index: 0,
             instructions: vec![
-                CompiledInstruction {
-                    program_id_index: 0,
-                    accounts: vec![1, 2, 3],
-                    data: vec![4, 5, 6],
+                InnerInstruction {
+                    instruction: CompiledInstruction {
+                        program_id_index: 0,
+                        accounts: vec![1, 2, 3],
+                        data: vec![4, 5, 6],
+                    },
+                    stack_height: None,
                 },
-                CompiledInstruction {
-                    program_id_index: 1,
-                    accounts: vec![12, 13, 14],
-                    data: vec![24, 25, 26],
+                InnerInstruction {
+                    instruction: CompiledInstruction {
+                        program_id_index: 1,
+                        accounts: vec![12, 13, 14],
+                        data: vec![24, 25, 26],
+                    },
+                    stack_height: None,
                 },
             ],
         };
@@ -996,15 +1007,21 @@ pub(crate) mod tests {
             inner_instructions: Some(vec![InnerInstructions {
                 index: 0,
                 instructions: vec![
-                    CompiledInstruction {
-                        program_id_index: 0,
-                        accounts: vec![1, 2, 3],
-                        data: vec![4, 5, 6],
+                    InnerInstruction {
+                        instruction: CompiledInstruction {
+                            program_id_index: 0,
+                            accounts: vec![1, 2, 3],
+                            data: vec![4, 5, 6],
+                        },
+                        stack_height: None,
                     },
-                    CompiledInstruction {
-                        program_id_index: 1,
-                        accounts: vec![12, 13, 14],
-                        data: vec![24, 25, 26],
+                    InnerInstruction {
+                        instruction: CompiledInstruction {
+                            program_id_index: 1,
+                            accounts: vec![12, 13, 14],
+                            data: vec![24, 25, 26],
+                        },
+                        stack_height: None,
                     },
                 ],
             }]),

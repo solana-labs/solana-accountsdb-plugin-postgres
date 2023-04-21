@@ -37,7 +37,7 @@ use {
     },
     solana_runtime::{
         snapshot_archive_info::SnapshotArchiveInfoGetter, snapshot_config::SnapshotConfig,
-        snapshot_utils,
+        snapshot_hash::SnapshotHash, snapshot_utils,
     },
     solana_sdk::{
         client::SyncClient, clock::Slot, commitment_config::CommitmentConfig,
@@ -61,7 +61,7 @@ const RUST_LOG_FILTER: &str =
 fn wait_for_next_snapshot(
     cluster: &LocalCluster,
     snapshot_archives_dir: &Path,
-) -> (PathBuf, (Slot, Hash)) {
+) -> (PathBuf, (Slot, SnapshotHash)) {
     // Get slot after which this was generated
     let client = cluster
         .get_validator_client(&cluster.entry_point_info.id)
@@ -196,9 +196,8 @@ fn setup_snapshot_validator_config(
 
     // Create the validator config
     let validator_config = ValidatorConfig {
-        snapshot_config: Some(snapshot_config),
+        snapshot_config: snapshot_config,
         account_paths: account_storage_paths,
-        accounts_db_caching_enabled: true,
         accounts_hash_interval_slots: snapshot_interval_slots,
         geyser_plugin_config_files,
         enforce_ulimit_nofile: false,
@@ -313,8 +312,6 @@ fn test_postgres_plugin() {
     let snapshot_archives_dir = &leader_snapshot_test_config
         .validator_config
         .snapshot_config
-        .as_ref()
-        .unwrap()
         .full_snapshot_archives_dir;
     info!("Waiting for snapshot");
     let (archive_filename, archive_snapshot_hash) =
