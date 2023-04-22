@@ -213,7 +213,7 @@ impl GeyserPlugin for GeyserPluginPostgres {
     }
 
     fn update_account(
-        &mut self,
+        &self,
         account: ReplicaAccountInfoVersions,
         slot: u64,
         is_startup: bool,
@@ -236,7 +236,12 @@ impl GeyserPlugin for GeyserPluginPostgres {
                     GeyserPluginPostgresError::ReplicaAccountV001NotSupported,
                 )));
             }
-            ReplicaAccountInfoVersions::V0_0_2(account) => {
+            ReplicaAccountInfoVersions::V0_0_2(_) => {
+                return Err(GeyserPluginError::Custom(Box::new(
+                    GeyserPluginPostgresError::ReplicaAccountV001NotSupported,
+                )));
+            }
+            ReplicaAccountInfoVersions::V0_0_3(account) => {
                 let mut measure_select =
                     Measure::start("geyser-plugin-postgres-update-account-select");
                 if let Some(accounts_selector) = &self.accounts_selector {
@@ -262,7 +267,7 @@ impl GeyserPlugin for GeyserPluginPostgres {
                     self.accounts_selector.as_ref().unwrap()
                 );
 
-                match &mut self.client {
+                match &self.client {
                     None => {
                         return Err(GeyserPluginError::Custom(Box::new(
                             GeyserPluginPostgresError::DataStoreConnectionError {
@@ -306,15 +311,10 @@ impl GeyserPlugin for GeyserPluginPostgres {
         Ok(())
     }
 
-    fn update_slot_status(
-        &mut self,
-        slot: u64,
-        parent: Option<u64>,
-        status: SlotStatus,
-    ) -> Result<()> {
+    fn update_slot_status(&self, slot: u64, parent: Option<u64>, status: SlotStatus) -> Result<()> {
         info!("Updating slot {:?} at with status {:?}", slot, status);
 
-        match &mut self.client {
+        match &self.client {
             None => {
                 return Err(GeyserPluginError::Custom(Box::new(
                     GeyserPluginPostgresError::DataStoreConnectionError {
@@ -336,9 +336,9 @@ impl GeyserPlugin for GeyserPluginPostgres {
         Ok(())
     }
 
-    fn notify_end_of_startup(&mut self) -> Result<()> {
+    fn notify_end_of_startup(&self) -> Result<()> {
         info!("Notifying the end of startup for accounts notifications");
-        match &mut self.client {
+        match &self.client {
             None => {
                 return Err(GeyserPluginError::Custom(Box::new(
                     GeyserPluginPostgresError::DataStoreConnectionError {
@@ -360,11 +360,11 @@ impl GeyserPlugin for GeyserPluginPostgres {
     }
 
     fn notify_transaction(
-        &mut self,
+        &self,
         transaction_info: ReplicaTransactionInfoVersions,
         slot: u64,
     ) -> Result<()> {
-        match &mut self.client {
+        match &self.client {
             None => {
                 return Err(GeyserPluginError::Custom(Box::new(
                     GeyserPluginPostgresError::DataStoreConnectionError {
@@ -404,8 +404,8 @@ impl GeyserPlugin for GeyserPluginPostgres {
         Ok(())
     }
 
-    fn notify_block_metadata(&mut self, block_info: ReplicaBlockInfoVersions) -> Result<()> {
-        match &mut self.client {
+    fn notify_block_metadata(&self, block_info: ReplicaBlockInfoVersions) -> Result<()> {
+        match &self.client {
             None => {
                 return Err(GeyserPluginError::Custom(Box::new(
                     GeyserPluginPostgresError::DataStoreConnectionError {
