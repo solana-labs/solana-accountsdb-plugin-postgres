@@ -301,7 +301,7 @@ impl From<&Reward> for DbReward {
     fn from(reward: &Reward) -> Self {
         Self {
             pubkey: reward.pubkey.clone(),
-            lamports: reward.lamports as i64,
+            lamports: reward.lamports,
             post_balance: reward.post_balance as i64,
             reward_type: get_reward_type(&reward.reward_type),
             commission: reward

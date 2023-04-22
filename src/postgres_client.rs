@@ -112,10 +112,10 @@ impl DbAccountInfo {
         let data = account.data().to_vec();
         Self {
             pubkey: account.pubkey().to_vec(),
-            lamports: account.lamports() as i64,
+            lamports: account.lamports(),
             owner: account.owner().to_vec(),
             executable: account.executable(),
-            rent_epoch: account.rent_epoch() as i64,
+            rent_epoch: account.rent_epoch(),
             data,
             slot: slot as i64,
             write_version: account.write_version(),
@@ -506,8 +506,8 @@ impl SimplePostgresClient {
         statement: &Statement,
         client: &mut Client,
     ) -> Result<(), GeyserPluginError> {
-        let lamports = account.lamports() as i64;
-        let rent_epoch = account.rent_epoch() as i64;
+        let lamports = account.lamports();
+        let rent_epoch = account.rent_epoch();
         let updated_on = Utc::now().naive_utc();
         let result = client.execute(
             statement,
@@ -545,8 +545,8 @@ impl SimplePostgresClient {
         insert_token_owner_index_stmt: &Option<Statement>,
         insert_token_mint_index_stmt: &Option<Statement>,
     ) -> Result<(), GeyserPluginError> {
-        let lamports = account.lamports() as i64;
-        let rent_epoch = account.rent_epoch() as i64;
+        let lamports = account.lamports();
+        let rent_epoch = account.rent_epoch();
         let updated_on = Utc::now().naive_utc();
         let result = client.execute(
             statement,
