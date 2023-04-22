@@ -686,7 +686,7 @@ pub(crate) mod tests {
         for i in 0..compiled_instruction.data.len() {
             assert_eq!(
                 compiled_instruction.data[i],
-                db_compiled_instruction.data[i] as u8
+                db_compiled_instruction.data[i]
             )
         }
     }

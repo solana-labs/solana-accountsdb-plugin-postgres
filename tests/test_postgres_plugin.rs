@@ -41,7 +41,7 @@ use {
     },
     solana_sdk::{
         client::SyncClient, clock::Slot, commitment_config::CommitmentConfig,
-        epoch_schedule::MINIMUM_SLOTS_PER_EPOCH, hash::Hash,
+        epoch_schedule::MINIMUM_SLOTS_PER_EPOCH,
     },
     solana_streamer::socket::SocketAddrSpace,
     std::{
@@ -196,7 +196,7 @@ fn setup_snapshot_validator_config(
 
     // Create the validator config
     let validator_config = ValidatorConfig {
-        snapshot_config: snapshot_config,
+        snapshot_config,
         account_paths: account_storage_paths,
         accounts_hash_interval_slots: snapshot_interval_slots,
         geyser_plugin_config_files,
@@ -224,8 +224,8 @@ fn test_local_cluster_start_and_exit_with_config(socket_addr_space: SocketAddrSp
         node_stakes: vec![3; NUM_NODES],
         cluster_lamports: 100,
         ticks_per_slot: 8,
-        slots_per_epoch: MINIMUM_SLOTS_PER_EPOCH as u64,
-        stakers_slot_offset: MINIMUM_SLOTS_PER_EPOCH as u64,
+        slots_per_epoch: MINIMUM_SLOTS_PER_EPOCH,
+        stakers_slot_offset: MINIMUM_SLOTS_PER_EPOCH,
         ..ClusterConfig::default()
     };
     let cluster = LocalCluster::new(&mut config, socket_addr_space);
