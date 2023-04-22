@@ -64,7 +64,8 @@ Create TYPE "TransactionErrorCode" AS ENUM (
     'WouldExceedAccountDataBlockLimit',
     'WouldExceedAccountDataTotalLimit',
     'DuplicateInstruction',
-    'InsufficientFundsForRent'
+    'InsufficientFundsForRent',
+    'MaxLoadedAccountsDataSizeExceeded'
 );
 
 CREATE TYPE "TransactionError" AS (
