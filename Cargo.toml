@@ -15,7 +15,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 bs58 = "0.4.0"
 bytemuck = "1.12.1"
-chrono = { version = "0.4.23", features = ["serde"] }
+chrono = { version = "0.4.24", features = ["serde"] }
 crossbeam-channel = "0.5.7"
 log = "0.4.17"
 openssl = { version = "0.10.42" }
