@@ -406,9 +406,7 @@ impl From<&TransactionError> for DbTransactionErrorCode {
             TransactionError::InvalidLoadedAccountsDataSizeLimit => {
                 Self::InvalidLoadedAccountsDataSizeLimit
             }
-            TransactionError::ResanitizationNeeded => {
-                Self::ResanitizationNeeded
-            }
+            TransactionError::ResanitizationNeeded => Self::ResanitizationNeeded,
         }
     }
 }
