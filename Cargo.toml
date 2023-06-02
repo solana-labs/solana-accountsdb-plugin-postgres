@@ -25,13 +25,13 @@ postgres-openssl = { version = "0.5.0"}
 serde = "1.0.145"
 serde_derive = "1.0.145"
 serde_json = "1.0.85"
-solana-geyser-plugin-interface = { git = "https://github.com/lijunwangs/solana.git", rev = "4a549d6f6ff1df1d2c3a6fda87dd9d2b8b8c5bf5" }
-solana-logger = { git = "https://github.com/lijunwangs/solana.git", rev = "4a549d6f6ff1df1d2c3a6fda87dd9d2b8b8c5bf5" }
-solana-measure = { git = "https://github.com/lijunwangs/solana.git", rev = "4a549d6f6ff1df1d2c3a6fda87dd9d2b8b8c5bf5" }
-solana-metrics = { git = "https://github.com/lijunwangs/solana.git", rev = "4a549d6f6ff1df1d2c3a6fda87dd9d2b8b8c5bf5" }
-solana-runtime = { git = "https://github.com/lijunwangs/solana.git", rev = "4a549d6f6ff1df1d2c3a6fda87dd9d2b8b8c5bf5" }
-solana-sdk = { git = "https://github.com/lijunwangs/solana.git", rev = "4a549d6f6ff1df1d2c3a6fda87dd9d2b8b8c5bf5" }
-solana-transaction-status = { git = "https://github.com/lijunwangs/solana.git", rev = "4a549d6f6ff1df1d2c3a6fda87dd9d2b8b8c5bf5" }
+solana-geyser-plugin-interface = { version = "1.16.0" }
+solana-logger = { version = "1.16.0" }
+solana-measure = { version = "1.16.0" }
+solana-metrics = { version = "1.16.0" }
+solana-runtime = { version = "1.16.0" }
+solana-sdk = { version = "1.16.0" }
+solana-transaction-status = { version = "1.16.0" }
 thiserror = "1.0.37"
 tokio-postgres = "0.7.7"
 
@@ -41,11 +41,11 @@ libloading = "0.7.3"
 serial_test = "0.9.0"
 socket2 = { version = "0.4.7", features = ["all"] }
 
-solana-account-decoder = { git = "https://github.com/lijunwangs/solana.git", rev = "4a549d6f6ff1df1d2c3a6fda87dd9d2b8b8c5bf5" }
-solana-core = { git = "https://github.com/lijunwangs/solana.git", rev = "4a549d6f6ff1df1d2c3a6fda87dd9d2b8b8c5bf5" }
-solana-local-cluster = { git = "https://github.com/lijunwangs/solana.git", rev = "4a549d6f6ff1df1d2c3a6fda87dd9d2b8b8c5bf5" }
-solana-net-utils = { git = "https://github.com/lijunwangs/solana.git", rev = "4a549d6f6ff1df1d2c3a6fda87dd9d2b8b8c5bf5" }
-solana-streamer = { git = "https://github.com/lijunwangs/solana.git", rev = "4a549d6f6ff1df1d2c3a6fda87dd9d2b8b8c5bf5" }
+solana-account-decoder = { version = "1.16.0" }
+solana-core = { version = "1.16.0" }
+solana-local-cluster = { version = "1.16.0" }
+solana-net-utils = { version = "1.16.0" }
+solana-streamer = { version = "1.16.0" }
 tempfile = "3.3.0"
 
 [package.metadata.docs.rs]

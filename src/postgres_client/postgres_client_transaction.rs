@@ -350,6 +350,7 @@ pub enum DbTransactionErrorCode {
     InsufficientFundsForRent,
     MaxLoadedAccountsDataSizeExceeded,
     InvalidLoadedAccountsDataSizeLimit,
+    ResanitizationNeeded,
 }
 
 impl From<&TransactionError> for DbTransactionErrorCode {
@@ -404,6 +405,9 @@ impl From<&TransactionError> for DbTransactionErrorCode {
             }
             TransactionError::InvalidLoadedAccountsDataSizeLimit => {
                 Self::InvalidLoadedAccountsDataSizeLimit
+            }
+            TransactionError::ResanitizationNeeded => {
+                Self::ResanitizationNeeded
             }
         }
     }
