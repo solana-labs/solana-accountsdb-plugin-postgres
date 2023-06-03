@@ -64,7 +64,7 @@ fn wait_for_next_snapshot(
 ) -> (PathBuf, (Slot, SnapshotHash)) {
     // Get slot after which this was generated
     let client = cluster
-        .get_validator_client(&cluster.entry_point_info.pubkey())
+        .get_validator_client(cluster.entry_point_info.pubkey())
         .unwrap();
     let last_slot = client
         .get_slot_with_commitment(CommitmentConfig::processed())
