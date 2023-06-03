@@ -64,7 +64,7 @@ fn wait_for_next_snapshot(
 ) -> (PathBuf, (Slot, SnapshotHash)) {
     // Get slot after which this was generated
     let client = cluster
-        .get_validator_client(&cluster.entry_point_info.id)
+        .get_validator_client(&cluster.entry_point_info.pubkey())
         .unwrap();
     let last_slot = client
         .get_slot_with_commitment(CommitmentConfig::processed())
@@ -192,14 +192,14 @@ fn setup_snapshot_validator_config(
 
     let (plugin_config_dir, path) = generate_geyser_plugin_config();
 
-    let geyser_plugin_config_files = Some(vec![path]);
+    let on_start_geyser_plugin_config_files = Some(vec![path]);
 
     // Create the validator config
     let validator_config = ValidatorConfig {
         snapshot_config,
         account_paths: account_storage_paths,
         accounts_hash_interval_slots: snapshot_interval_slots,
-        geyser_plugin_config_files,
+        on_start_geyser_plugin_config_files,
         enforce_ulimit_nofile: false,
         ..ValidatorConfig::default()
     };
@@ -269,7 +269,7 @@ fn test_postgres_plugin() {
     let mut file = File::open(
         &leader_snapshot_test_config
             .validator_config
-            .geyser_plugin_config_files
+            .on_start_geyser_plugin_config_files
             .as_ref()
             .unwrap()[0],
     )
