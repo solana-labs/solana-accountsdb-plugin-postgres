@@ -19,7 +19,7 @@ use {
     postgres_client_transaction::LogTransactionRequest,
     postgres_openssl::MakeTlsConnector,
     solana_geyser_plugin_interface::geyser_plugin_interface::{
-        GeyserPluginError, ReplicaAccountInfoV2, ReplicaBlockInfoV2, SlotStatus,
+        GeyserPluginError, ReplicaAccountInfoV3, ReplicaBlockInfoV2, SlotStatus,
     },
     solana_measure::measure::Measure,
     solana_metrics::*,
@@ -169,7 +169,7 @@ impl ReadableAccountInfo for DbAccountInfo {
     }
 }
 
-impl<'a> ReadableAccountInfo for ReplicaAccountInfoV2<'a> {
+impl<'a> ReadableAccountInfo for ReplicaAccountInfoV3<'a> {
     fn pubkey(&self) -> &[u8] {
         self.pubkey
     }
@@ -199,7 +199,7 @@ impl<'a> ReadableAccountInfo for ReplicaAccountInfoV2<'a> {
     }
 
     fn txn_signature(&self) -> Option<&[u8]> {
-        self.txn_signature.map(|v| v.as_ref())
+        self.txn.map(|v| v.signature().as_ref())
     }
 }
 
@@ -1155,12 +1155,12 @@ impl ParallelPostgresClient {
     }
 
     pub fn update_account(
-        &mut self,
-        account: &ReplicaAccountInfoV2,
+        &self,
+        account: &ReplicaAccountInfoV3,
         slot: u64,
         is_startup: bool,
     ) -> Result<(), GeyserPluginError> {
-        if !is_startup && account.txn_signature.is_none() {
+        if !is_startup && account.txn.is_none() {
             // we are not interested in accountsdb internal bookeeping updates
             return Ok(());
         }
@@ -1210,7 +1210,7 @@ impl ParallelPostgresClient {
     }
 
     pub fn update_slot_status(
-        &mut self,
+        &self,
         slot: u64,
         parent: Option<u64>,
         status: SlotStatus,
@@ -1231,7 +1231,7 @@ impl ParallelPostgresClient {
     }
 
     pub fn update_block_metadata(
-        &mut self,
+        &self,
         block_info: &ReplicaBlockInfoV2,
     ) -> Result<(), GeyserPluginError> {
         if let Err(err) = self.sender.send(DbWorkItem::UpdateBlockMetadata(Box::new(
@@ -1249,7 +1249,7 @@ impl ParallelPostgresClient {
         Ok(())
     }
 
-    pub fn notify_end_of_startup(&mut self) -> Result<(), GeyserPluginError> {
+    pub fn notify_end_of_startup(&self) -> Result<(), GeyserPluginError> {
         info!("Notifying the end of startup");
         // Ensure all items in the queue has been received by the workers
         while !self.sender.is_empty() {

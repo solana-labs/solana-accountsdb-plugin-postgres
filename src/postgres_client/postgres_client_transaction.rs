@@ -349,6 +349,8 @@ pub enum DbTransactionErrorCode {
     DuplicateInstruction,
     InsufficientFundsForRent,
     MaxLoadedAccountsDataSizeExceeded,
+    InvalidLoadedAccountsDataSizeLimit,
+    ResanitizationNeeded,
 }
 
 impl From<&TransactionError> for DbTransactionErrorCode {
@@ -401,6 +403,10 @@ impl From<&TransactionError> for DbTransactionErrorCode {
             TransactionError::MaxLoadedAccountsDataSizeExceeded => {
                 Self::MaxLoadedAccountsDataSizeExceeded
             }
+            TransactionError::InvalidLoadedAccountsDataSizeLimit => {
+                Self::InvalidLoadedAccountsDataSizeLimit
+            }
+            TransactionError::ResanitizationNeeded => Self::ResanitizationNeeded,
         }
     }
 }
@@ -621,7 +627,7 @@ impl ParallelPostgresClient {
     }
 
     pub fn log_transaction_info(
-        &mut self,
+        &self,
         transaction_info: &ReplicaTransactionInfoV2,
         slot: u64,
     ) -> Result<(), GeyserPluginError> {
