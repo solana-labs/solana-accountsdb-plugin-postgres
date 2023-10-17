@@ -1,4 +1,4 @@
-#![allow(clippy::integer_arithmetic)]
+#![allow(clippy::arithmetic_side_effects)]
 
 mod postgres_client_account_index;
 mod postgres_client_block_metadata;
