@@ -351,6 +351,7 @@ pub enum DbTransactionErrorCode {
     MaxLoadedAccountsDataSizeExceeded,
     InvalidLoadedAccountsDataSizeLimit,
     ResanitizationNeeded,
+    UnbalancedTransaction,
 }
 
 impl From<&TransactionError> for DbTransactionErrorCode {
@@ -407,6 +408,7 @@ impl From<&TransactionError> for DbTransactionErrorCode {
                 Self::InvalidLoadedAccountsDataSizeLimit
             }
             TransactionError::ResanitizationNeeded => Self::ResanitizationNeeded,
+            TransactionError::UnbalancedTransaction => Self::UnbalancedTransaction,
         }
     }
 }
@@ -1374,7 +1376,7 @@ pub(crate) mod tests {
 
     #[test]
     fn test_build_db_transaction_legacy() {
-        let signature = Signature::new(&[1u8; 64]);
+        let signature = Signature::from([1u8; 64]);
 
         let message_hash = Hash::new_unique();
         let transaction = build_test_transaction_legacy();
@@ -1407,9 +1409,9 @@ pub(crate) mod tests {
     fn build_test_transaction_v0() -> VersionedTransaction {
         VersionedTransaction {
             signatures: vec![
-                Signature::new(&[1u8; 64]),
-                Signature::new(&[2u8; 64]),
-                Signature::new(&[3u8; 64]),
+                Signature::from([1u8; 64]),
+                Signature::from([2u8; 64]),
+                Signature::from([3u8; 64]),
             ],
             message: VersionedMessage::V0(build_transaction_message_v0()),
         }
@@ -1417,7 +1419,7 @@ pub(crate) mod tests {
 
     #[test]
     fn test_build_db_transaction_v0() {
-        let signature = Signature::new(&[1u8; 64]);
+        let signature = Signature::from([1u8; 64]);
 
         let message_hash = Hash::new_unique();
         let transaction = build_test_transaction_v0();
