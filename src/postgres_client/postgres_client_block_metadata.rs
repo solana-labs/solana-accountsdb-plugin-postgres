@@ -9,7 +9,7 @@ use {
     log::*,
     postgres::{Client, Statement},
     solana_geyser_plugin_interface::geyser_plugin_interface::{
-        GeyserPluginError, ReplicaBlockInfoV2,
+        GeyserPluginError, ReplicaBlockInfoV3,
     },
 };
 
@@ -22,8 +22,8 @@ pub struct DbBlockInfo {
     pub block_height: Option<i64>,
 }
 
-impl<'a> From<&ReplicaBlockInfoV2<'a>> for DbBlockInfo {
-    fn from(block_info: &ReplicaBlockInfoV2) -> Self {
+impl<'a> From<&ReplicaBlockInfoV3<'a>> for DbBlockInfo {
+    fn from(block_info: &ReplicaBlockInfoV3) -> Self {
         Self {
             slot: block_info.slot as i64,
             blockhash: block_info.blockhash.to_string(),

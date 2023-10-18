@@ -19,7 +19,7 @@ use {
     postgres_client_transaction::LogTransactionRequest,
     postgres_openssl::MakeTlsConnector,
     solana_geyser_plugin_interface::geyser_plugin_interface::{
-        GeyserPluginError, ReplicaAccountInfoV3, ReplicaBlockInfoV2, SlotStatus,
+        GeyserPluginError, ReplicaAccountInfoV3, ReplicaBlockInfoV3, SlotStatus,
     },
     solana_measure::measure::Measure,
     solana_metrics::*,
@@ -1232,7 +1232,7 @@ impl ParallelPostgresClient {
 
     pub fn update_block_metadata(
         &self,
-        block_info: &ReplicaBlockInfoV2,
+        block_info: &ReplicaBlockInfoV3,
     ) -> Result<(), GeyserPluginError> {
         if let Err(err) = self.sender.send(DbWorkItem::UpdateBlockMetadata(Box::new(
             UpdateBlockMetadataRequest {
