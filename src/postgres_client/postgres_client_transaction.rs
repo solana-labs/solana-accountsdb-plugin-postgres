@@ -410,7 +410,9 @@ impl From<&TransactionError> for DbTransactionErrorCode {
             }
             TransactionError::ResanitizationNeeded => Self::ResanitizationNeeded,
             TransactionError::UnbalancedTransaction => Self::UnbalancedTransaction,
-            TransactionError::ProgramExecutionTemporarilyRestricted {account_index: _} => Self::ProgramExecutionTemporarilyRestricted,
+            TransactionError::ProgramExecutionTemporarilyRestricted { account_index: _ } => {
+                Self::ProgramExecutionTemporarilyRestricted
+            }
         }
     }
 }
