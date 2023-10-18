@@ -67,7 +67,8 @@ Create TYPE "TransactionErrorCode" AS ENUM (
     'InsufficientFundsForRent',
     'MaxLoadedAccountsDataSizeExceeded',
     'InvalidLoadedAccountsDataSizeLimit',
-    'ResanitizationNeeded'
+    'ResanitizationNeeded',
+    'UnbalancedTransaction'
 );
 
 CREATE TYPE "TransactionError" AS (
