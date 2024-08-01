@@ -168,7 +168,7 @@ impl GeyserPlugin for GeyserPluginPostgres {
     ///    }
     /// }
 
-    fn on_load(&mut self, config_file: &str) -> Result<()> {
+    fn on_load(&mut self, config_file: &str, _is_reload: bool) -> Result<()> {
         solana_logger::setup_with_default("info");
         info!(
             "Loading plugin {:?} from config_file {:?}",

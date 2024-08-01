@@ -8,7 +8,7 @@ use serde_json::json;
 /// To setup manually on Ubuntu Linux, do the following,
 /// sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
 /// wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
-/// apt install -y postgresql-14
+/// apt install -y postgresql-16
 /// sudo /etc/init.d/postgresql start
 ///
 /// sudo -u postgres psql --command "CREATE USER solana WITH SUPERUSER PASSWORD 'solana';"

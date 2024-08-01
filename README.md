@@ -118,18 +118,18 @@ To select all vote transactions:
 
 Please follow [PostgreSQL Ubuntu Installation](https://www.postgresql.org/download/linux/ubuntu/)
 on instructions to install the PostgreSQL database server. For example, to
-install postgresql-14,
+install postgresql-16,
 
 ```
 sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
 wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
 sudo apt-get update
-sudo apt-get -y install postgresql-14
+sudo apt-get -y install postgresql-16
 ```
 #### Control the Database Access
 
 Modify the pg_hba.conf as necessary to grant the plugin to access the database.
-For example, in /etc/postgresql/14/main/pg_hba.conf, the following entry allows
+For example, in /etc/postgresql/16/main/pg_hba.conf, the following entry allows
 nodes with IPs in the CIDR 10.138.0.0/24 to access all databases. The validator
 runs in a node with an ip in the specified range.
 
@@ -142,10 +142,10 @@ better performance.
 
 #### Configure the Database Performance Parameters
 
-Please refer to the [PostgreSQL Server Configuration](https://www.postgresql.org/docs/14/runtime-config.html)
+Please refer to the [PostgreSQL Server Configuration](https://www.postgresql.org/docs/16/runtime-config.html)
 for configuration details. The referential implementation uses the following
-configurations for better database performance in the /etc/postgresql/14/main/postgresql.conf
-which are different from the default postgresql-14 installation.
+configurations for better database performance in the /etc/postgresql/16/main/postgresql.conf
+which are different from the default postgresql-16 installation.
 
 ```
 max_connections = 200                  # (change requires restart)
@@ -165,7 +165,7 @@ The sample scripts/postgresql.conf can be used for reference.
 Start the server:
 
 ```
-sudo systemctl start postgresql@14-main
+sudo systemctl start postgresql@16-main
 ```
 
 Create the database. For example, the following creates a database named 'solana':
